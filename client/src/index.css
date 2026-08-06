@@ -1,0 +1,300 @@
+* {
+  font-family: 'Outfit', 'Plus Jakarta Sans', 'Cairo', sans-serif;
+}
+
+.chunky-shadow-primary {
+  box-shadow: 0px 4px 0px #2c1482;
+  transition: all 0.15s ease;
+}
+
+.chunky-shadow-primary:hover {
+  transform: translateY(2px);
+  box-shadow: 0px 2px 0px #2c1482;
+}
+
+.chunky-shadow-primary:active {
+  transform: translateY(4px);
+  box-shadow: 0px 0px 0px #2c1482;
+}
+
+.soft-card-shadow {
+  box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s ease;
+  border: 3px solid #8c90f6 !important;
+}
+
+.soft-card-shadow:hover {
+  transform: translateY(-8px);
+  box-shadow: 0px 12px 24px rgba(0, 0, 0, 0.08);
+}
+
+.card-soft,
+.card-custom-border {
+  border: 3px solid #8c90f6 !important;
+}
+
+.card-hover-effect {
+  transition: all 0.2s ease;
+}
+
+.card-hover-effect:hover {
+  transform: translateY(-8px);
+  box-shadow: 0px 12px 24px rgba(0, 0, 0, 0.08);
+}
+
+.striped-progress {
+  background-image: linear-gradient(45deg,
+      rgba(255, 255, 255, 0.25) 25%,
+      transparent 25%,
+      transparent 50%,
+      rgba(255, 255, 255, 0.25) 50%,
+      rgba(255, 255, 255, 0.25) 75%,
+      transparent 75%,
+      transparent);
+  background-size: 1rem 1rem;
+}
+
+.hide-scrollbars::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scrollbars {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+
+
+/* Creative Professional Nav Pill Hover & Active Effects */
+.nav-pill-creative {
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
+}
+
+.nav-pill-creative::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, rgba(66, 33, 182, 0.12) 0%, rgba(176, 253, 181, 0.25) 100%);
+  opacity: 0;
+  transform: scale(0.92);
+  transition: all 0.3s ease;
+  z-index: 0;
+}
+
+.nav-pill-creative > * {
+  position: relative;
+  z-index: 1;
+}
+
+.nav-pill-creative .material-symbols-outlined {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.3s ease;
+}
+
+/* Hover State */
+.nav-pill-creative:hover {
+  transform: translateY(-3px) scale(1.03);
+  color: #4221b6 !important;
+}
+
+.nav-pill-creative:hover::before {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.nav-pill-creative:hover .material-symbols-outlined {
+  transform: scale(1.22) rotate(-8deg);
+  color: #4221b6 !important;
+}
+
+/* Active State */
+.nav-pill-creative.active-pill {
+  background: linear-gradient(135deg, #4221b6 0%, #5d35e0 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 24px -4px rgba(66, 33, 182, 0.45), 0 2px 6px rgba(66, 33, 182, 0.3);
+  transform: translateY(-2px) scale(1.05);
+}
+
+.nav-pill-creative.active-pill .material-symbols-outlined {
+  color: #b0fdb5 !important;
+  transform: scale(1.18);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.nav-pill-creative.active-pill:hover {
+  transform: translateY(-4px) scale(1.07);
+  box-shadow: 0 12px 28px -2px rgba(66, 33, 182, 0.55);
+}
+
+/* Responsive breakpoint for 1252px screen width */
+@media (max-width: 1252px) {
+  .nav-desktop-only {
+    display: none !important;
+  }
+  .nav-menu-toggle-btn {
+    display: flex !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .mobile-bottom-nav,
+  nav[class*="bottom-"] {
+    display: none !important;
+  }
+}
+
+@media (max-width: 471px) {
+  .hide-on-471 {
+    display: none !important;
+  }
+}
+
+@media (max-width: 549px) {
+  .title-parent-responsive {
+    font-size: 1.5rem !important;
+    line-height: 1.3 !important;
+  }
+}
+
+@media (max-width: 515px) {
+  .table-responsive-515 {
+    min-width: 480px !important;
+    font-size: 0.8rem !important;
+  }
+  .table-responsive-515 th,
+  .table-responsive-515 td {
+    padding-top: 0.6rem !important;
+    padding-bottom: 0.6rem !important;
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+    white-space: nowrap !important;
+  }
+  .card-padding-515 {
+    padding: 1rem !important;
+  }
+}
+
+@media (max-width: 441px) {
+  .title-calendar-responsive-441 {
+    font-size: 1.35rem !important;
+    line-height: 1.3 !important;
+  }
+}
+
+@media (max-width: 375px) {
+  .offer-section-responsive-375 {
+    padding: 0.875rem !important;
+  }
+  .offer-steps-box-375 {
+    padding: 0.5rem !important;
+    gap: 0.35rem !important;
+  }
+  .offer-step-circle-375 {
+    width: 1.625rem !important;
+    height: 1.625rem !important;
+    font-size: 0.7rem !important;
+  }
+}
+
+@media (max-width: 357px) {
+  .hide-on-357 {
+    display: none !important;
+  }
+}
+
+@media (max-width: 336px) {
+  .btn-join-responsive-336 {
+    font-size: 0.75rem !important;
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+    min-height: 40px !important;
+    gap: 0.35rem !important;
+  }
+  .btn-join-responsive-336 .material-symbols-outlined {
+    font-size: 1.125rem !important;
+  }
+}
+
+@media (min-width: 1253px) {
+  .nav-desktop-only {
+    display: inline-flex !important;
+  }
+  .nav-menu-toggle-btn {
+    display: none !important;
+  }
+}
+
+/* When user is NOT logged in, hide nav tabs and show menu at <= 1439px */
+@media (max-width: 1439px) {
+  .guest-nav .nav-desktop-only {
+    display: none !important;
+  }
+  .guest-nav .nav-menu-toggle-btn {
+    display: flex !important;
+  }
+}
+
+/* When user is NOT logged in, hide Connexion & S'inscrire at <= 891px */
+@media (max-width: 891px) {
+  .guest-nav .guest-auth-btns {
+    display: none !important;
+  }
+}
+
+/* Hide "Notifications" title text in popover at <= 640px */
+@media (max-width: 640px) {
+  .hide-notif-title-640 {
+    display: none !important;
+  }
+}
+
+/* Notifications popover: shrink and stick to right edge at <= 425px */
+@media (max-width: 425px) {
+  .notif-popover-responsive {
+    width: calc(100vw - 24px) !important;
+    max-width: 340px !important;
+    right: 0 !important;
+    left: auto !important;
+  }
+}
+
+/* Creative Menu Overlay & Card Styles */
+.creative-menu-overlay {
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.creative-menu-card {
+  animation: slideDownMenu 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  box-shadow: 0 20px 50px -10px rgba(28, 5, 118, 0.18), 0 0 0 1px rgba(66, 33, 182, 0.1);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideDownMenu {
+  from {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.creative-menu-item {
+  position: relative;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.creative-menu-item:hover {
+  transform: translateX(6px);
+}
+
+html[dir="rtl"] .creative-menu-item:hover {
+  transform: translateX(-6px);
+}

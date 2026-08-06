@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import VideoModal from '../components/VideoModal';
+import { API_BASE_URL } from '../config';
 
 export default function HomePage() {
   const { lang, t, isRtl } = useLanguage();
@@ -27,9 +28,9 @@ export default function HomePage() {
     setErrorMsg('');
     setLoading(true);
 
-    const endpoint = authMode === 'signup' 
-      ? 'http://localhost:5000/api/auth/signup' 
-      : 'http://localhost:5000/api/auth/login';
+    const endpoint = authMode === 'signup'
+      ? `${API_BASE_URL}/api/auth/signup`
+      : `${API_BASE_URL}/api/auth/login`;
 
     const payload = authMode === 'signup'
       ? { parentName, childName, childAge, email, password }

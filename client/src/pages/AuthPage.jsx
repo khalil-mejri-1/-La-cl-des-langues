@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { API_BASE_URL } from '../config';
 
 export default function AuthPage() {
   const { t, isRtl } = useLanguage();
@@ -35,8 +36,8 @@ export default function AuthPage() {
     setLoading(true);
 
     const endpoint = authMode === 'signup'
-      ? 'http://localhost:5000/api/auth/signup'
-      : 'http://localhost:5000/api/auth/login';
+      ? `${API_BASE_URL}/api/auth/signup`
+      : `${API_BASE_URL}/api/auth/login`;
 
     const payload = authMode === 'signup'
       ? { parentName, childName, childAge, email, password }

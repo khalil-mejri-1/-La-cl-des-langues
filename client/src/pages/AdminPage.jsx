@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import MeetModal from '../components/MeetModal';
+import { API_BASE_URL } from '../config';
 
 export default function AdminPage() {
   const { t, lang, isRtl } = useLanguage();
@@ -64,7 +65,7 @@ export default function AdminPage() {
   const fetchClients = async () => {
     setLoadingClients(true);
     try {
-      const res = await fetch('http://localhost:5000/api/clients');
+      const res = await fetch(`${API_BASE_URL}/api/clients`);
       const data = await res.json();
       if (res.ok && data.clients) {
         setClientsList(data.clients);
@@ -90,7 +91,7 @@ export default function AdminPage() {
 
     try {
       if (client._id) {
-        const res = await fetch(`http://localhost:5000/api/clients/${client._id}/role`, {
+        const res = await fetch(`${API_BASE_URL}/api/clients/${client._id}/role`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ role: targetRole }),
@@ -110,7 +111,7 @@ export default function AdminPage() {
     }
   };
 
-  // Trigger Delete Confirmation Modal
+  // Trigger Delete Confirmation Modalhttps://la-cl-des-langues.vercel.app
   const requestDeleteClient = (client) => {
     setDeleteModalData(client);
   };
@@ -123,7 +124,7 @@ export default function AdminPage() {
 
     try {
       if (client._id) {
-        const res = await fetch(`http://localhost:5000/api/clients/${client._id}`, {
+        const res = await fetch(`${API_BASE_URL}/api/clients/${client._id}`, {
           method: 'DELETE',
         });
         if (res.ok) {
@@ -172,12 +173,12 @@ export default function AdminPage() {
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 class="text-headline-md font-headline-md text-on-surface mb-2 font-bold">
-            {activeTab === 'session' 
-              ? (lang === 'ar' ? 'إدارة الجلسات' : 'Gestion de Session') 
+            {activeTab === 'session'
+              ? (lang === 'ar' ? 'إدارة الجلسات' : 'Gestion de Session')
               : (lang === 'ar' ? 'إدارة الحرفاء والأولياء' : 'Gestion de Client')}
           </h1>
           <p class="text-body-md font-body-md text-on-surface-variant font-medium">
-            {activeTab === 'session' 
+            {activeTab === 'session'
               ? (lang === 'ar' ? 'إدارة طلبات الحصص إضافة روابط الاجتماعات' : 'Gérez les demandes de cours et ajoutez des liens de visioconférence.')
               : (lang === 'ar' ? 'عرض أولياء الأمور المسجلين وحسابات الأطفال' : 'Consultez la liste des parents inscrits et des élèves.')}
           </p>

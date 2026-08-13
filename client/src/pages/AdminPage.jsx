@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import MeetModal from '../components/MeetModal';
 import { API_BASE_URL } from '../config';
 
 export default function AdminPage() {
   const { t, lang, isRtl } = useLanguage();
+  const { user, loginUser } = useAuth();
   const [activeTab, setActiveTab] = useState('session'); // 'session' | 'client'
   const [searchQuery, setSearchQuery] = useState('');
   const [editingSession, setEditingSession] = useState(null);
@@ -98,10 +100,16 @@ export default function AdminPage() {
         });
         if (res.ok) {
           setClientsList(prev => prev.map(c => c._id === client._id ? { ...c, role: targetRole } : c));
+          if (user && (user.id === client._id || user._id === client._id)) {
+            loginUser({ ...user, role: targetRole });
+          }
         }
       } else {
         // Mock update
         setClientsList(prev => prev.map(c => c === client ? { ...c, role: targetRole } : c));
+        if (user && user.email === client.email) {
+          loginUser({ ...user, role: targetRole });
+        }
       }
     } catch (err) {
       console.error('Erreur changement rôle:', err);

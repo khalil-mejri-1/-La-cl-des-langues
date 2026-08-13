@@ -1,0 +1,76 @@
+[debug] [2026-08-06T23:31:14.528Z] ----------------------------------------------------------------------
+[debug] [2026-08-06T23:31:14.530Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\khalil\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js login
+[debug] [2026-08-06T23:31:14.530Z] CLI Version:   15.26.0
+[debug] [2026-08-06T23:31:14.530Z] Platform:      win32
+[debug] [2026-08-06T23:31:14.530Z] Node Version:  v22.18.0
+[debug] [2026-08-06T23:31:14.530Z] Detected Agent: unknown
+[debug] [2026-08-06T23:31:14.531Z] Time:          Fri Aug 07 2026 00:31:14 GMT+0100 (Central European Standard Time)
+[debug] [2026-08-06T23:31:14.531Z] ----------------------------------------------------------------------
+[debug] 
+[info] i  The Firebase CLI’s MCP server feature can optionally make use of Gemini in Firebase. Learn more about Gemini in Firebase and how it uses your data: https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data 
+[info] 
+[info] i  Firebase optionally collects CLI and Emulator Suite usage and error reporting information to help improve our products. Data is collected in accordance with Google's privacy policy (https://policies.google.com/privacy) and is not used to identify you. 
+[info] 
+[info] i  To change your preferences at any time, run `firebase logout` and `firebase login` again. 
+[info] 
+[info] Visit this URL on this device to log in:
+[info] https://accounts.google.com/o/oauth2/auth?client_id=563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com&scope=email%20openid%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloudplatformprojects.readonly%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Ffirebase%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform&response_type=code&state=576587089&redirect_uri=http%3A%2F%2Flocalhost%3A9005
+[info] 
+[info] Waiting for authentication...
+[debug] [2026-08-06T23:31:49.385Z] >>> [apiv2][query] POST https://accounts.google.com/o/oauth2/token [none]
+[debug] [2026-08-06T23:31:49.385Z] >>> [apiv2][body] POST https://accounts.google.com/o/oauth2/token [omitted]
+[debug] [2026-08-06T23:31:49.837Z] <<< [apiv2][status] POST https://accounts.google.com/o/oauth2/token 200
+[debug] [2026-08-06T23:31:49.838Z] <<< [apiv2][body] POST https://accounts.google.com/o/oauth2/token [omitted]
+[info] 
+[info] +  Success! Logged in as mejrik1888@gmail.com 
+[debug] [2026-08-06T23:31:59.955Z] Error: Timed out.
+    at Timeout._onTimeout (C:\Users\khalil\AppData\Roaming\npm\node_modules\firebase-tools\lib\utils.js:296:49)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-08-06T23:32:05.351Z] ----------------------------------------------------------------------
+[debug] [2026-08-06T23:32:05.353Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\khalil\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js init
+[debug] [2026-08-06T23:32:05.354Z] CLI Version:   15.26.0
+[debug] [2026-08-06T23:32:05.354Z] Platform:      win32
+[debug] [2026-08-06T23:32:05.354Z] Node Version:  v22.18.0
+[debug] [2026-08-06T23:32:05.354Z] Detected Agent: unknown
+[debug] [2026-08-06T23:32:05.354Z] Time:          Fri Aug 07 2026 00:32:05 GMT+0100 (Central European Standard Time)
+[debug] [2026-08-06T23:32:05.354Z] ----------------------------------------------------------------------
+[debug] 
+[info] 
+     ######## #### ########  ######## ########     ###     ######  ########
+     ##        ##  ##     ## ##       ##     ##  ##   ##  ##       ##
+     ######    ##  ########  ######   ########  #########  ######  ######
+     ##        ##  ##    ##  ##       ##     ## ##     ##       ## ##
+     ##       #### ##     ## ######## ########  ##     ##  ######  ########
+
+You're about to initialize a Firebase project in this directory:
+
+  C:\Users\khalil\Desktop\khalil\project_react\platform-francais
+
+[info] 
+=== Project Setup
+[info] 
+[info] First, let's associate this project directory with a Firebase project.
+[info] You can create multiple project aliases by running firebase use --add, 
+[info] 
+[debug] [2026-08-06T23:32:20.832Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-06T23:32:20.832Z] > authorizing via signed-in user (mejrik1888@gmail.com)
+[debug] [2026-08-06T23:32:20.842Z] Checked if tokens are valid: true, expires at: 1786062708838
+[debug] [2026-08-06T23:32:20.842Z] Checked if tokens are valid: true, expires at: 1786062708838
+[debug] [2026-08-06T23:32:20.843Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects pageSize=100
+[debug] [2026-08-06T23:32:21.885Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects 200
+[debug] [2026-08-06T23:32:21.885Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects [omitted]
+[info] 
+=== Hosting Setup
+[debug] [2026-08-06T23:32:24.535Z] Checked if tokens are valid: true, expires at: 1786062708838
+[debug] [2026-08-06T23:32:24.535Z] Checked if tokens are valid: true, expires at: 1786062708838
+[debug] [2026-08-06T23:32:24.535Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/la-cle-des-langues [none]
+[debug] [2026-08-06T23:32:24.968Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/la-cle-des-langues 200
+[debug] [2026-08-06T23:32:24.968Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/la-cle-des-langues {"projectId":"la-cle-des-langues","projectNumber":"135799019295","displayName":" La-cle-des-langues","name":"projects/la-cle-des-langues","resources":{"hostingSite":"la-cle-des-langues"},"state":"ACTIVE","labels":{"firebase":"enabled"},"etag":"1_596f6f8c-94fd-40cb-a3c3-157b9a51d6a4"}
+[info] 
+[info] Your public directory is the folder (relative to your project directory) that
+[info] will contain Hosting assets to be uploaded with firebase deploy. If you
+[info] have a build process for your assets, use your build's output directory.
+[info] 

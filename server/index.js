@@ -3,6 +3,8 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const User = require("./models/User");
+const NavSettings = require("./models/NavSettings");
+const SectionSettings = require("./models/SectionSettings");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -144,6 +146,77 @@ app.delete("/api/clients/:id", async (req, res) => {
   } catch (error) {
     console.error("Erreur Delete Client:", error);
     res.status(500).json({ error: "Erreur lors de la suppression du client." });
+  }
+});
+
+// GET Custom Nav Settings Endpoint
+app.get("/api/settings/nav", async (req, res) => {
+  try {
+    let settings = await NavSettings.findOne({ key: 'nav_titles' });
+    if (!settings) {
+      const defaultNav = {
+        fr: { home: "Accueil", dashboard: "Espace Élève", parent: "Espace Parent", calendar: "Calendrier", admin: "Admin" },
+        ar: { home: "الرئيسية", dashboard: "لوحة الطالب", parent: "فضاء الوليّ", calendar: "التقويم", admin: "الإدارة" },
+        en: { home: "Home", dashboard: "Student Space", parent: "Parent Space", calendar: "Schedule", admin: "Admin" },
+      };
+      settings = await NavSettings.create({ key: 'nav_titles', nav: defaultNav });
+    }
+    res.json({ nav: settings.nav });
+  } catch (error) {
+    console.error("Erreur Fetch Nav Settings:", error);
+    res.status(500).json({ error: "Erreur serveur lors de la récupération des paramètres nav." });
+  }
+});
+
+// PUT Update Nav Settings Endpoint
+app.put("/api/settings/nav", async (req, res) => {
+  try {
+    const { nav } = req.body;
+    if (!nav) {
+      return res.status(400).json({ error: "Données nav invalides." });
+    }
+    let settings = await NavSettings.findOneAndUpdate(
+      { key: 'nav_titles' },
+      { nav },
+      { new: true, upsert: true }
+    );
+    res.json({ message: "Paramètres nav mis à jour avec succès !", nav: settings.nav });
+  } catch (error) {
+    console.error("Erreur Update Nav Settings:", error);
+    res.status(500).json({ error: "Erreur serveur lors de la mise à jour des paramètres nav." });
+  }
+});
+
+// GET Custom Section Settings Endpoint
+app.get("/api/settings/sections", async (req, res) => {
+  try {
+    let settings = await SectionSettings.findOne({ key: 'home_sections' });
+    if (!settings) {
+      settings = await SectionSettings.create({ key: 'home_sections', sections: {} });
+    }
+    res.json({ sections: settings.sections || {} });
+  } catch (error) {
+    console.error("Erreur Fetch Section Settings:", error);
+    res.status(500).json({ error: "Erreur serveur lors de la récupération des sections." });
+  }
+});
+
+// PUT Update Section Settings Endpoint
+app.put("/api/settings/sections", async (req, res) => {
+  try {
+    const { sections } = req.body;
+    if (!sections) {
+      return res.status(400).json({ error: "Données sections invalides." });
+    }
+    let settings = await SectionSettings.findOneAndUpdate(
+      { key: 'home_sections' },
+      { sections },
+      { new: true, upsert: true }
+    );
+    res.json({ message: "Sections mises à jour avec succès !", sections: settings.sections });
+  } catch (error) {
+    console.error("Erreur Update Section Settings:", error);
+    res.status(500).json({ error: "Erreur serveur lors de la mise à jour des sections." });
   }
 });
 

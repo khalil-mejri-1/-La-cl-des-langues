@@ -11,6 +11,7 @@ import ParentPage from './pages/ParentPage';
 import CalendarPage from './pages/CalendarPage';
 import AdminPage from './pages/AdminPage';
 import AuthPage from './pages/AuthPage';
+import AdminRoute from './components/AdminRoute';
 
 export default function App() {
   const { isRtl } = useLanguage();
@@ -27,7 +28,14 @@ export default function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/parent" element={<ParentPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
-          <Route path="/admin" element={<AdminPage />} />
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <AdminPage />
+              </AdminRoute>
+            }
+          />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

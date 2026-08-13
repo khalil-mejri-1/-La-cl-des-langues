@@ -293,17 +293,17 @@ export const translations = {
       title: "Á VOS AGENDAS",
       subtitle: "Choisis ton jour et ton heure pour commencer à apprendre avec tes nouveaux amis.",
       packOffer: {
-        badge: "OFFRE SPÉCIALE 4+1",
-        freeTag: "1 Séance offerte !",
-        title: "Pack Découverte : 4 Sessions + 1 Offerte 🎁",
-        subtitle: "Réservez vos 4 premières leçons et obtenez 1 séance d'essai entièrement gratuite pour votre enfant !",
+        badge: "OFFRE SANS ENGAGEMENT",
+        freeTag: "100% Gratuite !",
+        title: "Réservez votre séance d'essai gratuite 🎁",
+        subtitle: "Offrez à votre enfant une première leçon individuelle d'essai sans aucun engagement pour découvrir notre méthode d'apprentissage ludique !",
         features: [
-          "5 séances au prix de 4",
+          "Sans aucun engagement",
           "Tuteur dédié & certifié",
           "1ère séance 100% offerte"
         ],
-        selectBtn: "Activer le Pack 4 + 1 Gratuit",
-        activeTag: "Pack 4+1 Activé !"
+        selectBtn: "Réserver ma séance d'essai gratuite",
+        activeTag: "Séance d'essai sélectionnée ✓"
       },
       step1Title: "Choisis un jour",
       daysOfWeek: ["Lu", "Ma", "Me", "Je", "Ve", "Sa", "Di"],
@@ -679,17 +679,17 @@ export const translations = {
       title: "هل أنت مستعد للمغامرة؟",
       subtitle: "اختر اليوم والوقت المناسبين لتبدأ التعلم الممتع مع أصدقائك الجدد.",
       packOffer: {
-        badge: "عرض خاص 4+1",
-        freeTag: "حصة تجريبية مجاناً!",
-        title: "حزمة الإكتشاف: 4 حصص + 1 مجاناً 🎁",
-        subtitle: "احجز 4 حصص تعليمية واحصل فوراً على حصة تجريبية إضافية مجانية بالكامل لترغيب طفلك!",
+        badge: "عرض التّجربة بدون التزام",
+        freeTag: "100% مجانية!",
+        title: "احجز جلستك التجريبية المجانية 🎁",
+        subtitle: "امنح طفلك فرصة اكتشاف أسلوبنا التعلمي التفاعلي والممتع من خلال درس تجريبي فردي ومجاني بالكامل بدون أي التزام!",
         features: [
-          "5 حصص بسعر 4 فقط",
-          "معلمون معتمدون وصبورون",
-          "الحصة الأولى 100% مجاناً"
+          "بدون أي التزام مالي",
+          "معلمة مخصصة ومؤهلة",
+          "حصة أولى 100% مجانية"
         ],
-        selectBtn: "تفعيل حزمة 4 + 1 مجاناً",
-        activeTag: "تم تفعيل حزمة 4+1!"
+        selectBtn: "احجز جلستك التجريبية المجانية",
+        activeTag: "تم اختيار الجلسة التجريبية ✓"
       },
       step1Title: "اختر يوماً",
       daysOfWeek: ["الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت", "الأحد"],
@@ -769,6 +769,397 @@ export const translations = {
       parents: "أولياء الأمور",
       help: "المساعدة",
       privacy: "الخصوصية"
+    }
+  },
+  en: {
+    brand: "La clé des langues",
+    nav: {
+      home: "Home",
+      dashboard: "Student Space",
+      parent: "Parent Space",
+      games: "Games",
+      calendar: "Schedule",
+      admin: "Admin",
+      learn: "Learn",
+      progress: "Progress",
+      login: "Log In",
+      signup: "Sign Up"
+    },
+    hero: {
+      tag: "Learn. Progress. Succeed.",
+      title: "Welcome to La clé des langues",
+      subtitle: "Our platform accompanies children and teenagers in learning Arabic and French through interactive, personalized, and engaging online lessons.",
+      features: [
+        { icon: "school", text: "Interactive online classes", bg: "bg-[#EAF5EA]", color: "text-[#3B5E35]" },
+        { icon: "person", text: "Experienced teachers", bg: "bg-[#FFF4E5]", color: "text-[#D97706]" },
+        { icon: "trending_up", text: "Personalized progress tracking", bg: "bg-[#FCE8E6]", color: "text-[#E53E3E]" }
+      ],
+      tutorsTitle: "Our Teachers",
+      tutors: [
+        { name: "Olfa", desc: "Arabic language teacher with over 15 years of experience.", img: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=400" },
+        { name: "Feten", desc: "Specialist in French as a Foreign Language, passionate about modern pedagogy.", img: "https://images.unsplash.com/photo-1580894732413-801648a37947?auto=format&fit=crop&q=80&w=400" }
+      ]
+    },
+    howItWorks: {
+      title: "How does it work?",
+      subtitle: "A simple path to start learning today.",
+      steps: [
+        {
+          stepNum: "1",
+          title: "Registration",
+          desc: "Create a parent account in just a few clicks.",
+          icon: "grid_view",
+          bgIcon: "bg-[#FFEBEE]",
+          iconColor: "text-[#D32F2F]"
+        },
+        {
+          stepNum: "2",
+          title: "Booking",
+          desc: "Choose the ideal schedule for your child.",
+          icon: "event_available",
+          bgIcon: "bg-[#FFF9C4]",
+          iconColor: "text-[#F57F17]"
+        },
+        {
+          stepNum: "3",
+          title: "Learning",
+          desc: "Practice with our interactive educational games.",
+          icon: "menu_book",
+          bgIcon: "bg-[#E1F5FE]",
+          iconColor: "text-[#0288D1]"
+        },
+        {
+          stepNum: "4",
+          title: "Live Session",
+          desc: "Meet our certified tutors live online.",
+          icon: "record_voice_over",
+          bgIcon: "bg-[#FFEBEE]",
+          iconColor: "text-[#C62828]"
+        }
+      ]
+    },
+    Testimonials: {
+      title: "What parents say",
+      list: [
+        {
+          id: 1,
+          stars: 5,
+          quote: '"My children love it! They look forward to their Wednesday session with great enthusiasm."',
+          author: "- Sophie, Leo's Mom (7 years old)"
+        },
+        {
+          id: 2,
+          stars: 5,
+          quote: '"A truly fun methodology. Learning Arabic became a game for my daughter."',
+          author: "- Karim, Lina's Dad (5 years old)"
+        },
+        {
+          id: 3,
+          stars: 4,
+          quote: '"The tutors are very patient and the platform is super secure. Highly recommended!"',
+          author: "- Marie, Thomas's Mom (9 years old)"
+        }
+      ]
+    },
+    trustBar: [
+      { icon: "health_and_safety", label: "100% Secure Platform", color: "text-[#C62828]" },
+      { icon: "verified", label: "Certified Tutors", color: "text-[#558B2F]" },
+      { icon: "shield_person", label: "Parental Control", color: "text-[#37474F]" }
+    ],
+    authPage: {
+      loginTab: "Log In",
+      signupTab: "Sign Up",
+      welcomeLoginTitle: "Welcome back!",
+      welcomeLoginSub: "Access your parent dashboard and track your children's progress.",
+      welcomeSignupTitle: "Let's learn together!",
+      welcomeSignupSub: "Create your account in 1 minute and offer your child an engaging learning experience.",
+      feature1: "Live classes with certified expert teachers.",
+      feature2: "Tailored courses designed for each student's level and pace.",
+      feature3: "Fun and interactive educational games.",
+      emailLabel: "Email Address",
+      emailPlaceholder: "example@parent.com",
+      passwordLabel: "Password",
+      passwordPlaceholder: "••••••••",
+      forgotPassword: "Forgot password?",
+      parentNameLabel: "Parent Full Name",
+      parentNamePlaceholder: "Ex: Sarah Martin",
+      childNameLabel: "Child First Name",
+      childNamePlaceholder: "Ex: Leo",
+      childAgeLabel: "Child Age",
+      ageOptions: ["3 - 5 years (Preschool)", "6 - 8 years (Primary)", "9 - 12 years (Advanced)"],
+      acceptTerms: "I accept the Terms of Service and Privacy Policy",
+      submitLogin: "Log In",
+      submitSignup: "Create My Free Account",
+      googleAuth: "Continue with Google",
+      noAccountText: "Don't have an account yet?",
+      hasAccountText: "Already have an account?",
+      switchToSignup: "Sign Up Free",
+      switchToLogin: "Log In"
+    },
+    notificationsPopover: {
+      title: "Notifications",
+      markAllRead: "Mark all as read",
+      viewAll: "View all notifications",
+      unreadBadge: "2 new",
+      items: [
+        {
+          id: 1,
+          title: "Next session at 16:30",
+          desc: "Your French session with Marie starts in 15 minutes!",
+          time: "10 min ago",
+          unread: true,
+          icon: "videocam",
+          iconBg: "bg-[#E1F5FE]",
+          iconColor: "text-[#0288D1]"
+        },
+        {
+          id: 2,
+          title: "+15 Stars earned!",
+          desc: "Great job Leo! You cleared Level 2 in Magic Words.",
+          time: "1 hour ago",
+          unread: true,
+          icon: "star",
+          iconBg: "bg-[#FFFDE7]",
+          iconColor: "text-[#F57F17]"
+        },
+        {
+          id: 3,
+          title: "Booking confirmed",
+          desc: "Your booking for Wednesday at 14:00 has been confirmed.",
+          time: "3 hours ago",
+          unread: false,
+          icon: "event_available",
+          iconBg: "bg-[#E8F5E9]",
+          iconColor: "text-[#2E7D32]"
+        }
+      ]
+    },
+    dashboardPage: {
+      welcome: "Hi Leo!",
+      welcomeSub: "Ready for new language adventures today?",
+      starsLabel: "Stars",
+      daysLabel: "Streak Days",
+      nextSession: "Your Next Session",
+      today: "TODAY",
+      time: "16:30 - 17:00",
+      teacher: "With Marie",
+      countdown: "15:00",
+      countdownSub: "until start",
+      joinButton: "Join Session",
+      favGames: "Your Favorite Games",
+      seeAllGames: "See All Games",
+      game1: "Animal Memory",
+      game2: "Math Bubbles",
+      game3: "Magic Words",
+      dailyGoal: "Daily Goal",
+      dailyGoalSub: "Earn 20 stars to unlock a special surprise!",
+      reminderTag: "Reminder",
+      reminderText: "Get your colored pencils ready for tomorrow's session!"
+    },
+    parentPage: {
+      title: "Leo's Dashboard",
+      subtitle: "Welcome to the parent portal. Track progress and manage sessions easily.",
+      accountType: "Parent Account",
+      accountBadge: "Premium",
+      globalProgress: "Overall Progress",
+      french: "French",
+      frenchLevel: "Level 3 - 75%",
+      frenchNext: "Next step: Animal Vocabulary",
+      arabic: "Arabic",
+      arabicLevel: "Level 1 - 40%",
+      arabicNext: "In progress: Alphabet (basic letters)",
+      historyTitle: "Session History",
+      seeAll: "See All",
+      thDate: "Date & Time",
+      thSubject: "Subject",
+      thTutor: "Teacher",
+      thStatus: "Status",
+      statusCompleted: "Completed",
+      statusCancelled: "Cancelled",
+      upcomingTitle: "Upcoming Sessions",
+      todayTag: "Today",
+      joinVideo: "Join Session",
+      manageBtn: "Manage",
+      planNew: "Schedule a New Session"
+    },
+    gamesCatalogPage: {
+      heroTitle: "Ready to Have Fun?",
+      heroSub: "Discover new words while playing!",
+      heroSubAr: "Découvre de nouveaux mots en jouant !",
+      playBtn: "Play Now",
+      lockedTag: "Locked",
+      lockedMsg: "Complete Level 1 to unlock",
+      list: [
+        {
+          id: 1,
+          titleFr: "Mots Magiques",
+          titleAr: "الكلمات السحرية",
+          titleEn: "Magic Words",
+          stars: 2,
+          icon: "forum",
+          bgClass: "bg-[#E3F2FD]",
+          borderClass: "border-[#8c90f6]"
+        },
+        {
+          id: 2,
+          titleFr: "Puzzle des Animaux",
+          titleAr: "لغز الحيوانات",
+          titleEn: "Animal Puzzle",
+          stars: 1,
+          icon: "extension",
+          bgClass: "bg-[#E8F5E9]",
+          borderClass: "border-[#8c90f6]"
+        },
+        {
+          id: 3,
+          titleFr: "Mémo Rapide",
+          titleAr: "ذاكرة سريعة",
+          titleEn: "Quick Memory",
+          stars: 3,
+          icon: "memory",
+          bgClass: "bg-[#FFFDE7]",
+          borderClass: "border-[#8c90f6]"
+        },
+        {
+          id: 4,
+          titleFr: "Couleurs Vives",
+          titleAr: "ألوان زاهية",
+          titleEn: "Vibrant Colors",
+          stars: 1,
+          icon: "palette",
+          bgClass: "bg-[#F3E5F5]",
+          borderClass: "border-[#8c90f6]"
+        },
+        {
+          id: 5,
+          titleFr: "Nombres Fous",
+          titleAr: "أرقام مجنونة",
+          titleEn: "Crazy Numbers",
+          stars: 2,
+          icon: "calculate",
+          bgClass: "bg-surface",
+          borderClass: "border-[#8c90f6]",
+          locked: true
+        }
+      ]
+    },
+    adminPage: {
+      badge: "Admin Dashboard",
+      title: "Session Requests",
+      subtitle: "Manage upcoming tutoring sessions and add Google Meet links.",
+      searchPlaceholder: "Search child...",
+      filterBtn: "Filter",
+      thChild: "Child Name",
+      thDateTime: "Date & Time",
+      thSubject: "Subject",
+      thStatus: "Status",
+      thActions: "Actions",
+      addMeetBtn: "Add Meet Link",
+      viewNotesBtn: "View Notes",
+      pendingStatus: "Pending",
+      meetAddedStatus: "Meet Link Added",
+      doneStatus: "Done",
+      showingEntries: "Showing 1 to 3 of 12 entries",
+      modalTitle: "Add Google Meet Link",
+      modalSessionFor: "Session for",
+      modalLabel: "Google Meet Link",
+      cancelBtn: "Cancel",
+      saveBtn: "Save Link"
+    },
+    calendarPage: {
+      title: "MARK YOUR CALENDARS",
+      subtitle: "Choose your day and time to start learning with your new friends.",
+      packOffer: {
+        badge: "NO COMMITMENT OFFER",
+        freeTag: "100% Free!",
+        title: "Book Your Free Trial Session 🎁",
+        subtitle: "Give your child a first individual trial lesson with zero commitment to discover our fun learning method!",
+        features: [
+          "Zero commitment",
+          "Dedicated & certified tutor",
+          "1st session 100% free"
+        ],
+        selectBtn: "Book My Free Trial Session",
+        activeTag: "Free Trial Selected ✓"
+      },
+      step1Title: "Choose a Day",
+      daysOfWeek: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+      step2Title: "What time?",
+      timeSlots: ["10:00", "14:00", "16:30"],
+      step3Title: "Payment Method",
+      paymentMethods: [
+        { id: 'card', name: 'Credit Card / CIB', desc: 'Visa, Mastercard, E-Dinar (100% secure encryption)', icon: 'credit_card', badge: 'Recommended' },
+        { id: 'fawran', name: 'Bank Transfer or Fawran (فوراً)', desc: 'Instant payment via bank transfer or Fawran service', icon: 'bolt', badge: 'Fast' }
+      ],
+      confirmButton: "Confirm Booking",
+      eagerText: "We can't wait to see you!",
+      successTitle: "Awesome!",
+      successMsg: "Your reservation is confirmed for {day} at {time}.",
+      backHome: "Back to Home"
+    },
+    gamesSection: {
+      title: "Try a Game!",
+      subtitle: "Discover our mini educational games.",
+      seeAll: "See All",
+      games: [
+        {
+          id: 1,
+          title: "Little Detective",
+          desc: "Find hidden objects and learn their names.",
+          stars: 2,
+          icon: "search",
+          bg: "bg-[#f0f9ff]",
+          border: "border-[#8c90f6]",
+          iconColor: "text-primary-container"
+        },
+        {
+          id: 2,
+          title: "Magic Words",
+          desc: "Connect letters to form magic words.",
+          stars: 3,
+          icon: "auto_awesome",
+          bg: "bg-[#fdf4ff]",
+          border: "border-[#8c90f6]",
+          iconColor: "text-[#d946ef]"
+        },
+        {
+          id: 3,
+          title: "Animal Farm",
+          desc: "Learn farm animal sounds.",
+          stars: 1,
+          icon: "cruelty_free",
+          bg: "bg-[#f0fdf4]",
+          border: "border-[#8c90f6]",
+          iconColor: "text-[#22c55e]"
+        },
+        {
+          id: 4,
+          title: "Crazy Colors",
+          desc: "Mix bright colors to paint the sky.",
+          stars: 3,
+          icon: "palette",
+          bg: "bg-[#fffbeb]",
+          border: "border-[#8c90f6]",
+          iconColor: "text-[#f59e0b]"
+        }
+      ]
+    },
+    homePage: {
+      videoTag: "Video Demo",
+      videoTitle: "Discover our learning method in video",
+      videoDesc: "Watch how our certified teachers accompany your children towards success."
+    },
+    mobileNav: {
+      home: "Home",
+      lessons: "Lessons",
+      calendar: "Schedule",
+      profile: "Profile"
+    },
+    footer: {
+      copy: "© 2026 La clé des langues - Learning while having fun",
+      parents: "Parents",
+      help: "Help",
+      privacy: "Privacy"
     }
   }
 };

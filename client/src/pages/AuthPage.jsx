@@ -59,8 +59,12 @@ export default function AuthPage() {
       // Login User
       loginUser(data.user);
 
-      // Redirect to Parent Workspace
-      navigate('/parent');
+      // Redirect based on role
+      if (data.user?.role?.toLowerCase() === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/parent');
+      }
     } catch (err) {
       setErrorMsg(err.message);
     } finally {

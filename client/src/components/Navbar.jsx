@@ -3,12 +3,14 @@ import { createPortal } from 'react-dom';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import EditNavModal from './EditNavModal';
 
 export default function Navbar() {
   const { lang, setLang, t, isRtl } = useLanguage();
   const { user, isLoggedIn, logoutUser } = useAuth();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isEditNavOpen, setIsEditNavOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(2);
   const location = useLocation();
 
@@ -19,6 +21,7 @@ export default function Navbar() {
     { to: '/dashboard', label: t.nav.dashboard, icon: 'face' },
     { to: '/parent', label: t.nav.parent, icon: 'supervisor_account' },
     { to: '/calendar', label: t.nav.calendar, icon: 'calendar_month' },
+    ...(user?.role?.toLowerCase() === 'admin' ? [{ to: '/admin', label: t.nav.admin || 'Admin', icon: 'admin_panel_settings' }] : []),
   ];
 
   return (
@@ -65,11 +68,25 @@ export default function Navbar() {
 
         {/* Actions & Menu Toggle */}
         <div className="flex items-center gap-2 md:gap-4">
+          {/* Admin Edit Navbar Button - Only visible for Admin accounts */}
+          {user?.role?.toLowerCase() === 'admin' && (
+            <button
+              onClick={() => setIsEditNavOpen(true)}
+              title={lang === 'ar' ? 'تعديل أسماء أزرار الهيدر' : 'Modifier les boutons du Header'}
+              className="flex items-center gap-1.5 bg-gradient-to-r from-[#4221b6] to-[#5d35e0] text-white px-3 sm:px-4 py-2 rounded-full font-black text-xs shadow-md hover:scale-105 transition-all cursor-pointer border border-white/20"
+            >
+              <span className="material-symbols-outlined text-lg">edit_note</span>
+              <span className="hidden sm:inline">
+                {lang === 'ar' ? 'تعديل الأزرار' : 'Modifier Nav'}
+              </span>
+            </button>
+          )}
+
           {/* Language Switcher (Desktop) */}
           <div className="hidden md:flex hide-on-471 items-center gap-1 bg-surface-container-low/90 backdrop-blur-md p-1 rounded-full border border-surface-variant shadow-inner">
             <button
               onClick={() => setLang('fr')}
-              className={`font-label-bold rounded-full px-3.5 py-1.5 text-xs transition-all cursor-pointer ${lang === 'fr'
+              className={`font-label-bold rounded-full px-3 py-1.5 text-xs transition-all cursor-pointer ${lang === 'fr'
                 ? 'bg-[#b0fdb5] text-[#0d4013] font-black shadow-sm scale-105'
                 : 'text-on-surface-variant hover:text-[#4221b6]'
                 }`}
@@ -78,12 +95,21 @@ export default function Navbar() {
             </button>
             <button
               onClick={() => setLang('ar')}
-              className={`font-label-bold rounded-full px-3.5 py-1.5 text-xs transition-all cursor-pointer ${lang === 'ar'
+              className={`font-label-bold rounded-full px-3 py-1.5 text-xs transition-all cursor-pointer ${lang === 'ar'
                 ? 'bg-[#b0fdb5] text-[#0d4013] font-black shadow-sm scale-105'
                 : 'text-on-surface-variant hover:text-[#4221b6]'
                 }`}
             >
               AR
+            </button>
+            <button
+              onClick={() => setLang('en')}
+              className={`font-label-bold rounded-full px-3 py-1.5 text-xs transition-all cursor-pointer ${lang === 'en'
+                ? 'bg-[#b0fdb5] text-[#0d4013] font-black shadow-sm scale-105'
+                : 'text-on-surface-variant hover:text-[#4221b6]'
+                }`}
+            >
+              EN
             </button>
           </div>
 
@@ -177,7 +203,7 @@ export default function Navbar() {
             </div>
 
             <button
-              onClick={() => setLang(lang === 'fr' ? 'ar' : 'fr')}
+              onClick={() => setLang(lang === 'fr' ? 'ar' : lang === 'ar' ? 'en' : 'fr')}
               aria-label="language"
               className="w-touch-target h-touch-target hide-on-471 flex items-center justify-center rounded-full hover:bg-surface-container-low transition-colors hover:text-primary-container md:hidden"
             >
@@ -312,20 +338,26 @@ export default function Navbar() {
               <div className="flex items-center justify-between p-3 rounded-2xl bg-[#faf9f5] border border-slate-200/60">
                 <span className="text-xs font-bold text-slate-700 flex items-center gap-2">
                   <span className="material-symbols-outlined text-lg text-[#4221b6]">language</span>
-                  {lang === 'fr' ? 'Langue / اللغات' : 'اللغة / Langue'}
+                  {lang === 'ar' ? 'اللغة' : lang === 'en' ? 'Language' : 'Langue'}
                 </span>
                 <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
                   <button
                     onClick={() => setLang('fr')}
-                    className={`px-3.5 py-1 text-xs rounded-lg font-black transition-all cursor-pointer ${lang === 'fr' ? 'bg-[#b0fdb5] text-[#0d4013] shadow-sm scale-105' : 'text-slate-600 hover:text-[#4221b6]'}`}
+                    className={`px-2.5 py-1 text-xs rounded-lg font-black transition-all cursor-pointer ${lang === 'fr' ? 'bg-[#b0fdb5] text-[#0d4013] shadow-sm scale-105' : 'text-slate-600 hover:text-[#4221b6]'}`}
                   >
                     FR
                   </button>
                   <button
                     onClick={() => setLang('ar')}
-                    className={`px-3.5 py-1 text-xs rounded-lg font-black transition-all cursor-pointer ${lang === 'ar' ? 'bg-[#b0fdb5] text-[#0d4013] shadow-sm scale-105' : 'text-slate-600 hover:text-[#4221b6]'}`}
+                    className={`px-2.5 py-1 text-xs rounded-lg font-black transition-all cursor-pointer ${lang === 'ar' ? 'bg-[#b0fdb5] text-[#0d4013] shadow-sm scale-105' : 'text-slate-600 hover:text-[#4221b6]'}`}
                   >
                     AR
+                  </button>
+                  <button
+                    onClick={() => setLang('en')}
+                    className={`px-2.5 py-1 text-xs rounded-lg font-black transition-all cursor-pointer ${lang === 'en' ? 'bg-[#b0fdb5] text-[#0d4013] shadow-sm scale-105' : 'text-slate-600 hover:text-[#4221b6]'}`}
+                  >
+                    EN
                   </button>
                 </div>
               </div>
@@ -350,7 +382,7 @@ export default function Navbar() {
                     className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs transition-colors border border-red-200 cursor-pointer shadow-sm"
                   >
                     <span className="material-symbols-outlined text-base">logout</span>
-                    <span>{lang === 'ar' ? 'تسجيل الخروج' : 'Déconnexion'}</span>
+                    <span>{lang === 'ar' ? 'تسجيل الخروج' : lang === 'en' ? 'Log out' : 'Déconnexion'}</span>
                   </button>
                 </div>
               ) : !isAdminPath ? (
@@ -377,6 +409,11 @@ export default function Navbar() {
           </div>
         </>,
         document.body
+      )}
+
+      {/* Edit Nav Titles Modal */}
+      {isEditNavOpen && (
+        <EditNavModal onClose={() => setIsEditNavOpen(false)} />
       )}
     </header>
   );

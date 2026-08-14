@@ -619,6 +619,608 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
 
           {/* Form Content area */}
           <div className="space-y-4 bg-[#faf9f5] p-5 rounded-2xl border border-slate-200/80">
+
+            {/* Section 1: Hero Form */}
+            {sectionKey === 'hero' && (
+              <div className="space-y-4">
+                {/* Sub-Tabs Navigation */}
+                <div className="flex items-center gap-1.5 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+                  <button
+                    type="button"
+                    onClick={() => setActiveSubTab('general')}
+                    className={`px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                      activeSubTab === 'general'
+                        ? 'bg-[#4221b6] text-white shadow'
+                        : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-base">article</span>
+                    <span>{activeTab === 'ar' ? 'نصوص عامة' : 'Textes Généraux'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveSubTab('features')}
+                    className={`px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                      activeSubTab === 'features'
+                        ? 'bg-[#4221b6] text-white shadow'
+                        : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-base">star</span>
+                    <span>{activeTab === 'ar' ? 'مميزات المنصة' : 'Caractéristiques'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveSubTab('tutors')}
+                    className={`px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                      activeSubTab === 'tutors'
+                        ? 'bg-[#4221b6] text-white shadow'
+                        : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-base">group</span>
+                    <span>{activeTab === 'ar' ? 'المعلمات' : 'Maîtresses'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveSubTab('video')}
+                    className={`px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                      activeSubTab === 'video'
+                        ? 'bg-[#4221b6] text-white shadow'
+                        : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-base">play_circle</span>
+                    <span>{activeTab === 'ar' ? 'الفيديو التوضيحي' : 'Vidéo Démo'}</span>
+                  </button>
+                </div>
+
+                {/* Sub-tab 1: General Texts */}
+                {activeSubTab === 'general' && (
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-700">
+                        {activeTab === 'ar' ? 'وسم البداية (Tag Pill):' : 'Badge Tag :'}
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formData[activeTab]?.tag || ''}
+                        onChange={(e) => handleChange(activeTab, 'tag', e.target.value)}
+                        className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-700">
+                        {activeTab === 'ar' ? 'العنوان الرئيسي:' : 'Titre principal :'}
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formData[activeTab]?.title || ''}
+                        onChange={(e) => handleChange(activeTab, 'title', e.target.value)}
+                        className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-700">
+                        {activeTab === 'ar' ? 'الوصف الفرعي:' : 'Sous-titre :'}
+                      </label>
+                      <textarea
+                        rows={3}
+                        required
+                        value={formData[activeTab]?.subtitle || ''}
+                        onChange={(e) => handleChange(activeTab, 'subtitle', e.target.value)}
+                        className="w-full p-3 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-medium text-xs shadow-sm leading-relaxed"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-700">
+                        {activeTab === 'ar' ? 'عنوان قسم المعلمات:' : 'Titre de la section Maîtresses :'}
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formData[activeTab]?.tutorsTitle || ''}
+                        onChange={(e) => handleChange(activeTab, 'tutorsTitle', e.target.value)}
+                        className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Sub-tab 2: Features List */}
+                {activeSubTab === 'features' && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-black text-[#1c0576]">
+                        {activeTab === 'ar' ? 'كروت مميزات المنصة:' : 'Cartes des caractéristiques :'}
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={addFeatureCard}
+                        className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors flex items-center gap-1 shadow-sm cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-base">add</span>
+                        <span>{activeTab === 'ar' ? 'إضافة خاصية' : 'Ajouter une carte'}</span>
+                      </button>
+                    </div>
+
+                    {(formData.features || []).map((feat, idx) => (
+                      <div key={idx} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3 relative">
+                        <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                          <span className="text-xs font-bold text-slate-500">
+                            {activeTab === 'ar' ? `خاصية #${idx + 1}` : `Caractéristique #${idx + 1}`}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeFeatureCard(idx)}
+                            className="text-red-500 hover:text-red-700 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-base">delete</span>
+                            <span>{activeTab === 'ar' ? 'حذف' : 'Supprimer'}</span>
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div className="space-y-1">
+                            <label className="text-[11px] font-bold text-slate-700">
+                              {activeTab === 'ar' ? 'الأيقونة (Material Symbol):' : 'Icône (Material Symbol) :'}
+                            </label>
+                            <input
+                              type="text"
+                              value={feat.icon || 'star'}
+                              onChange={(e) => handleFeatureIconChange(idx, e.target.value)}
+                              placeholder="school, person, etc."
+                              className="w-full h-9 px-3 rounded-xl border border-slate-300 font-medium text-xs focus:border-[#4221b6] outline-none"
+                            />
+                          </div>
+                          <div className="sm:col-span-2 space-y-1">
+                            <label className="text-[11px] font-bold text-slate-700">
+                              {activeTab === 'ar' ? `النص (${activeTab.toUpperCase()}):` : `Texte (${activeTab.toUpperCase()}) :`}
+                            </label>
+                            <input
+                              type="text"
+                              value={feat[activeTab]?.text || feat.text || ''}
+                              onChange={(e) => handleFeatureChange(idx, activeTab, e.target.value)}
+                              className="w-full h-9 px-3 rounded-xl border border-slate-300 font-bold text-xs focus:border-[#4221b6] outline-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Sub-tab 3: Tutors List */}
+                {activeSubTab === 'tutors' && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-black text-[#1c0576]">
+                        {activeTab === 'ar' ? 'كروت المعلمات:' : 'Cartes des maîtresses :'}
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={addTutorCard}
+                        className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors flex items-center gap-1 shadow-sm cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-base">add</span>
+                        <span>{activeTab === 'ar' ? 'إضافة معلمة' : 'Ajouter une maîtresse'}</span>
+                      </button>
+                    </div>
+
+                    {(formData.tutors || []).map((tutor, idx) => (
+                      <div key={idx} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3 relative">
+                        <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                          <div className="flex items-center gap-2">
+                            {tutor.img && (
+                              <img src={tutor.img} alt="" className="w-8 h-8 rounded-lg object-cover border border-slate-200" />
+                            )}
+                            <span className="text-xs font-bold text-slate-700">
+                              {tutor[activeTab]?.name || tutor.name || `Maîtresse #${idx + 1}`}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeTutorCard(idx)}
+                            className="text-red-500 hover:text-red-700 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-base">delete</span>
+                            <span>{activeTab === 'ar' ? 'حذف' : 'Supprimer'}</span>
+                          </button>
+                        </div>
+                        <div className="space-y-3">
+                          <div className="space-y-1">
+                            <label className="text-[11px] font-bold text-slate-700">
+                              {activeTab === 'ar' ? 'رابط صورة المعلمة (URL):' : 'Lien photo (URL) :'}
+                            </label>
+                            <input
+                              type="text"
+                              value={tutor.img || ''}
+                              onChange={(e) => handleTutorImgChange(idx, e.target.value)}
+                              className="w-full h-9 px-3 rounded-xl border border-slate-300 font-medium text-xs focus:border-[#4221b6] outline-none"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[11px] font-bold text-slate-700">
+                              {activeTab === 'ar' ? `اسم المعلمة (${activeTab.toUpperCase()}):` : `Nom de la maîtresse (${activeTab.toUpperCase()}) :`}
+                            </label>
+                            <input
+                              type="text"
+                              value={tutor[activeTab]?.name || ''}
+                              onChange={(e) => handleTutorChange(idx, activeTab, 'name', e.target.value)}
+                              className="w-full h-9 px-3 rounded-xl border border-slate-300 font-bold text-xs focus:border-[#4221b6] outline-none"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[11px] font-bold text-slate-700">
+                              {activeTab === 'ar' ? `وصف المعلمة (${activeTab.toUpperCase()}):` : `Description (${activeTab.toUpperCase()}) :`}
+                            </label>
+                            <textarea
+                              rows={2}
+                              value={tutor[activeTab]?.desc || ''}
+                              onChange={(e) => handleTutorChange(idx, activeTab, 'desc', e.target.value)}
+                              className="w-full p-2.5 rounded-xl border border-slate-300 font-medium text-xs focus:border-[#4221b6] outline-none leading-relaxed"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Sub-tab 4: Video Demo Texts & URL */}
+                {activeSubTab === 'video' && (
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-700">
+                        {activeTab === 'ar' ? 'وسم الفيديو (Tag):' : 'Tag de la vidéo :'}
+                      </label>
+                      <input
+                        type="text"
+                        value={formData[activeTab]?.videoTag || ''}
+                        onChange={(e) => handleChange(activeTab, 'videoTag', e.target.value)}
+                        className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-700">
+                        {activeTab === 'ar' ? 'عنوان قسم الفيديو:' : 'Titre de la vidéo :'}
+                      </label>
+                      <input
+                        type="text"
+                        value={formData[activeTab]?.videoTitle || ''}
+                        onChange={(e) => handleChange(activeTab, 'videoTitle', e.target.value)}
+                        className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-700">
+                        {activeTab === 'ar' ? 'وصف الفيديو:' : 'Description de la vidéo :'}
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={formData[activeTab]?.videoDesc || ''}
+                        onChange={(e) => handleChange(activeTab, 'videoDesc', e.target.value)}
+                        className="w-full p-3 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-medium text-xs shadow-sm leading-relaxed"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-700">
+                        {activeTab === 'ar' ? 'رابط فيديو يوتيوب (URL):' : 'Lien vidéo YouTube :'}
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.videoUrl || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, videoUrl: e.target.value }))}
+                        placeholder="https://www.youtube.com/watch?v=..."
+                        className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Section 2: Video Section Form */}
+            {sectionKey === 'videoSection' && (
+              <>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    {activeTab === 'ar' ? 'وسم الفيديو (Tag):' : 'Tag de la vidéo :'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData[activeTab]?.videoTag || ''}
+                    onChange={(e) => handleChange(activeTab, 'videoTag', e.target.value)}
+                    className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    {activeTab === 'ar' ? 'عنوان قسم الفيديو:' : 'Titre de la vidéo :'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData[activeTab]?.videoTitle || ''}
+                    onChange={(e) => handleChange(activeTab, 'videoTitle', e.target.value)}
+                    className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    {activeTab === 'ar' ? 'وصف الفيديو:' : 'Description de la vidéo :'}
+                  </label>
+                  <textarea
+                    rows={3}
+                    required
+                    value={formData[activeTab]?.videoDesc || ''}
+                    onChange={(e) => handleChange(activeTab, 'videoDesc', e.target.value)}
+                    className="w-full p-3 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-medium text-xs shadow-sm leading-relaxed"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    {activeTab === 'ar' ? 'رابط فيديو يوتيوب (URL):' : 'Lien vidéo YouTube :'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.videoUrl || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, videoUrl: e.target.value }))}
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Section 3: How It Works Form */}
+            {sectionKey === 'howItWorks' && (
+              <>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    {activeTab === 'ar' ? 'عنوان قسم (كيف تعمل المنصة):' : 'Titre principal :'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData[activeTab]?.title || ''}
+                    onChange={(e) => handleChange(activeTab, 'title', e.target.value)}
+                    className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    {activeTab === 'ar' ? 'الوصف الفرعي:' : 'Sous-titre :'}
+                  </label>
+                  <textarea
+                    rows={2}
+                    required
+                    value={formData[activeTab]?.subtitle || ''}
+                    onChange={(e) => handleChange(activeTab, 'subtitle', e.target.value)}
+                    className="w-full p-3 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-medium text-xs shadow-sm leading-relaxed"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Section 4: Testimonials Form */}
+            {sectionKey === 'testimonials' && (
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700">
+                  {activeTab === 'ar' ? 'عنوان قسم آراء الأولياء:' : 'Titre du témoignage :'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData[activeTab]?.title || ''}
+                  onChange={(e) => handleChange(activeTab, 'title', e.target.value)}
+                  className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                />
+              </div>
+            )}
+
+            {/* Section 5: Next Session Form */}
+            {sectionKey === 'nextSession' && (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      {activeTab === 'ar' ? 'عنوان الجلسة القادمة:' : 'Titre prochaine session :'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData[activeTab]?.nextSession || ''}
+                      onChange={(e) => handleChange(activeTab, 'nextSession', e.target.value)}
+                      className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      {activeTab === 'ar' ? 'وسم اليوم (AUJOURD\'HUI):' : 'Tag Aujourd\'hui :'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData[activeTab]?.today || ''}
+                      onChange={(e) => handleChange(activeTab, 'today', e.target.value)}
+                      className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      {activeTab === 'ar' ? 'توقيت الجلسة:' : 'Horaire :'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData[activeTab]?.time || ''}
+                      onChange={(e) => handleChange(activeTab, 'time', e.target.value)}
+                      className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      {activeTab === 'ar' ? 'اسم المعلمة:' : 'Enseignante :'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData[activeTab]?.teacher || ''}
+                      onChange={(e) => handleChange(activeTab, 'teacher', e.target.value)}
+                      className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      {activeTab === 'ar' ? 'العداد التنازلي:' : 'Décompte :'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData[activeTab]?.countdown || ''}
+                      onChange={(e) => handleChange(activeTab, 'countdown', e.target.value)}
+                      className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      {activeTab === 'ar' ? 'الوصف الفرعي للعداد:' : 'Sous-texte décompte :'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData[activeTab]?.countdownSub || ''}
+                      onChange={(e) => handleChange(activeTab, 'countdownSub', e.target.value)}
+                      className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    {activeTab === 'ar' ? 'زر الانضمام للجلسة:' : 'Bouton Rejoindre :'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData[activeTab]?.joinButton || ''}
+                    onChange={(e) => handleChange(activeTab, 'joinButton', e.target.value)}
+                    className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Section 6: Favorite Games Form */}
+            {sectionKey === 'favGames' && (
+              <>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    {activeTab === 'ar' ? 'عنوان قسم الألعاب المفضلة:' : 'Titre principal :'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData[activeTab]?.favGames || ''}
+                    onChange={(e) => handleChange(activeTab, 'favGames', e.target.value)}
+                    className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    {activeTab === 'ar' ? 'اسم اللعبة الأولى:' : 'Jeu 1 :'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData[activeTab]?.game1 || ''}
+                    onChange={(e) => handleChange(activeTab, 'game1', e.target.value)}
+                    className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    {activeTab === 'ar' ? 'اسم اللعبة الثانية:' : 'Jeu 2 :'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData[activeTab]?.game2 || ''}
+                    onChange={(e) => handleChange(activeTab, 'game2', e.target.value)}
+                    className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    {activeTab === 'ar' ? 'اسم اللعبة الثالثة:' : 'Jeu 3 :'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData[activeTab]?.game3 || ''}
+                    onChange={(e) => handleChange(activeTab, 'game3', e.target.value)}
+                    className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Section 7: Reminder Banner Form */}
+            {sectionKey === 'reminderBanner' && (
+              <>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    {activeTab === 'ar' ? 'وسم التذكير:' : 'Tag du rappel :'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData[activeTab]?.reminderTag || ''}
+                    onChange={(e) => handleChange(activeTab, 'reminderTag', e.target.value)}
+                    className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    {activeTab === 'ar' ? 'نص التذكير:' : 'Texte du rappel :'}
+                  </label>
+                  <textarea
+                    rows={2}
+                    required
+                    value={formData[activeTab]?.reminderText || ''}
+                    onChange={(e) => handleChange(activeTab, 'reminderText', e.target.value)}
+                    className="w-full p-3 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-medium text-xs shadow-sm leading-relaxed"
+                  />
+                </div>
+              </>
+            )}
             
             {/* Calendar Header Form */}
             {sectionKey === 'calendarHeader' && (
@@ -1167,6 +1769,28 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
                   </div>
                 </div>
               </>
+            )}
+
+            {/* Dynamic Fallback for any unknown/custom sectionKey */}
+            {!['hero', 'videoSection', 'howItWorks', 'testimonials', 'calendarHeader', 'calendarPack', 'calendarStep1', 'calendarStep2', 'calendarStep3', 'footerSection', 'parentHeader', 'parentHistory', 'parentUpcoming', 'dashboardHeader', 'nextSession', 'favGames', 'reminderBanner'].includes(sectionKey) && (
+              <div className="space-y-3">
+                <p className="text-xs font-bold text-slate-500 mb-2">
+                  {activeTab === 'ar' ? 'حقول هذا القسم:' : 'Champs de cette section :'}
+                </p>
+                {Object.keys(formData[activeTab] || {}).map((fieldKey) => (
+                  <div key={fieldKey} className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 capitalize">
+                      {fieldKey} :
+                    </label>
+                    <input
+                      type="text"
+                      value={formData[activeTab][fieldKey] || ''}
+                      onChange={(e) => handleChange(activeTab, fieldKey, e.target.value)}
+                      className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                    />
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>

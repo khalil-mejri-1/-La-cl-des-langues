@@ -120,6 +120,83 @@ app.post("/api/auth/login", async (req, res) => {
   }
 });
 
+// Google Auth Endpoint - Login or Register with Google
+app.post("/api/auth/google", async (req, res) => {
+  try {
+    const { email, name, picture, googleId } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: "L'adresse e-mail Google est obligatoire." });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    let user = await User.findOne({ email: cleanEmail });
+    let isNewUser = false;
+
+    if (!user) {
+      isNewUser = true;
+      user = new User({
+        parentName: name || cleanEmail.split('@')[0],
+        childName: '',
+        childAge: '5 ans',
+        email: cleanEmail,
+        password: Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10),
+        googleId: googleId || '',
+        picture: picture || '',
+        authProvider: 'google',
+        role: 'user',
+        status: 'Actif',
+        availableDays: ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'],
+        timeSlots: [],
+        blockedDates: [],
+        blockedSlots: [],
+        customDaySlots: {},
+      });
+      await user.save();
+    } else {
+      let modified = false;
+      if (googleId && !user.googleId) {
+        user.googleId = googleId;
+        modified = true;
+      }
+      if (picture && !user.picture) {
+        user.picture = picture;
+        modified = true;
+      }
+      if (modified) {
+        await user.save();
+      }
+    }
+
+    const userObj = {
+      id: user._id,
+      _id: user._id,
+      parentName: user.parentName,
+      childName: user.childName,
+      childAge: user.childAge,
+      email: user.email,
+      role: user.role || 'user',
+      status: user.status || 'Actif',
+      picture: user.picture || picture || '',
+      authProvider: user.authProvider || 'google',
+      availableDays: user.availableDays || ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'],
+      timeSlots: user.timeSlots || [],
+      blockedDates: user.blockedDates || [],
+      blockedSlots: user.blockedSlots || [],
+      customDaySlots: user.customDaySlots || {},
+    };
+
+    res.json({
+      message: isNewUser ? "Compte créé avec succès avec Google !" : "Connexion réussie avec Google !",
+      user: userObj,
+      isNewUser,
+    });
+  } catch (error) {
+    console.error("Erreur Google Auth:", error);
+    res.status(500).json({ error: "Erreur serveur lors de l'authentification Google." });
+  }
+});
+
 // GET All Teachers (Maîtresses) with Schedules
 app.get("/api/teachers", async (req, res) => {
   try {

@@ -1,27 +1,285 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import EditNavModal from './EditNavModal';
+import { API_BASE_URL } from '../config';
+import { filterNotificationsForUser, syncSessionsToNotifications, playNotificationSound } from '../utils/notifications';
 
 export default function Navbar() {
   const { lang, setLang, t, isRtl } = useLanguage();
   const { user, isLoggedIn, logoutUser } = useAuth();
+  const navigate = useNavigate();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isEditNavOpen, setIsEditNavOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(2);
+  const [notifications, setNotifications] = useState([]);
+  const notifContainerRef = useRef(null);
+  const [readIds, setReadIds] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('notif_read_ids') || '[]'); } catch { return []; }
+  });
   const location = useLocation();
-
   const isAdminPath = location.pathname.startsWith('/admin');
+  const isAdmin = (() => {
+    if (!user) return false;
+    if (user.isAdmin === true) return true;
+    const r = user.role || user.roles;
+    if (!r) return false;
+    if (typeof r === 'string') return r.toLowerCase().includes('admin');
+    if (Array.isArray(r)) return r.some((item) => String(item).toLowerCase().includes('admin'));
+    return false;
+  })();
+
+  const isMaitresse = (() => {
+    if (!user) return false;
+    const r = user.role || user.roles;
+    if (!r) return false;
+    const roleStr = Array.isArray(r) ? r.join(' ').toLowerCase() : String(r).toLowerCase();
+    return roleStr.includes('maitresse') || roleStr.includes('teacher') || roleStr.includes('maître');
+  })();
+
+  const showAdmin = isAdmin || isMaitresse;
+  const showCalendar = isMaitresse || isAdmin;
+
+  const formatRoleLabel = (roleVal) => {
+    if (!roleVal) return [{ label: lang === 'ar' ? '👨‍👩‍👧 ولي أمر' : '👨‍👩‍👧 Parent', color: 'bg-slate-100 text-slate-700 border border-slate-200' }];
+    const roleStr = Array.isArray(roleVal) ? roleVal.join(', ').toLowerCase() : String(roleVal).toLowerCase();
+    
+    const badges = [];
+    if (roleStr.includes('admin')) {
+      badges.push({
+        label: lang === 'ar' ? '👑 مشرف (Admin)' : '👑 Admin',
+        color: 'bg-[#e0d7ff] text-[#4221b6] border border-[#8c90f6]/50',
+      });
+    }
+    if (roleStr.includes('maitresse') || roleStr.includes('teacher') || roleStr.includes('maître')) {
+      badges.push({
+        label: lang === 'ar' ? '👩‍🏫 معلمة' : '👩‍🏫 Maîtresse',
+        color: 'bg-emerald-100 text-emerald-800 border border-emerald-300',
+      });
+    }
+    if (badges.length === 0) {
+      badges.push({
+        label: lang === 'ar' ? '👨‍👩‍👧 ولي أمر' : '👨‍👩‍👧 Parent',
+        color: 'bg-slate-100 text-slate-700 border border-slate-200',
+      });
+    }
+    return badges;
+  };
+
+  // ── Derived values from notifications ─────────────────────────────────────
+  const unreadCount = notifications.filter(n => !readIds.includes(n.id)).length;
+
+  // Load notifications from localStorage + DB + listen for new ones in real time
+  const loadNotifications = useCallback(async (shouldPlaySound = false) => {
+    if (!user) {
+      setNotifications([]);
+      return;
+    }
+
+    try {
+      const unified = JSON.parse(localStorage.getItem('app_unified_notifications') || '[]');
+      const studentOld = JSON.parse(localStorage.getItem('student_notifications') || '[]');
+      const sessionsCache = JSON.parse(localStorage.getItem('admin_sessions_cache') || '[]');
+
+      // 1. Initial fast local pass
+      let allSessions = Array.isArray(sessionsCache) ? [...sessionsCache] : [];
+
+      // 2. Fetch fresh sessions from database API
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/sessions`);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data?.sessions)) {
+            allSessions = data.sessions;
+            try {
+              localStorage.setItem('admin_sessions_cache', JSON.stringify(data.sessions));
+            } catch {}
+          }
+        }
+      } catch (fetchErr) {
+        // Silent fallback
+      }
+
+      // 3. Convert all database sessions to live notifications for this user
+      const dbNotifs = syncSessionsToNotifications(allSessions, user);
+
+      // 4. Combine with stored broadcast notifications
+      const combined = [...unified];
+
+      // Add student old format if not present
+      studentOld.forEach(so => {
+        const matchingId = String(so.id || so.sessionId);
+        if (!combined.some(n => n.id === matchingId || (n.meta?.sessionId && n.meta.sessionId === so.sessionId))) {
+          combined.push({
+            id: matchingId,
+            type: 'MEET_LINK_ADDED',
+            targetStudentId: so.studentId,
+            targetStudentEmail: so.studentEmail,
+            targetTeacherName: so.teacherName,
+            title: {
+              fr: `🔗 Lien Google Meet ajouté !`,
+              ar: `🔗 تمت إضافة رابط Google Meet !`,
+              en: `🔗 Google Meet link ready!`,
+            },
+            desc: {
+              fr: `${so.teacherName || 'La maîtresse'} a ajouté un lien Google Meet pour votre séance du ${so.day || ''} à ${so.time || ''}.`,
+              ar: `أضافت المعلمة ${so.teacherName || 'المعلمة'} رابط حصتك ليوم ${so.day || ''} الساعة ${so.time || ''}.`,
+              en: `${so.teacherName || 'Tutor'} added a Google Meet link for your session on ${so.day || ''} at ${so.time || ''}.`,
+            },
+            icon: 'videocam',
+            iconBg: 'bg-emerald-100 text-emerald-700',
+            link: '/dashboard',
+            timestamp: so.timestamp || new Date().toISOString(),
+          });
+        }
+      });
+
+      // Merge DB synthesized notifications
+      dbNotifs.forEach(dn => {
+        const exists = combined.some(cn => 
+          cn.id === dn.id || 
+          (cn.meta?.sessionId && dn.meta?.sessionId && String(cn.meta.sessionId) === String(dn.meta.sessionId))
+        );
+        if (!exists) {
+          combined.push(dn);
+        }
+      });
+
+      // Filter and sort for the logged in user
+      const userNotifs = filterNotificationsForUser(combined, user).sort((a, b) => {
+        const timeA = new Date(a.timestamp || 0).getTime();
+        const timeB = new Date(b.timestamp || 0).getTime();
+        return timeB - timeA;
+      });
+
+      setNotifications(userNotifs);
+
+      if (shouldPlaySound) {
+        playNotificationSound();
+      }
+    } catch (e) {
+      console.error('Erreur chargement notifications:', e);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    loadNotifications(false);
+
+    // BroadcastChannel listener (real-time cross-tab)
+    let bc = null;
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        bc = new BroadcastChannel('app_sessions_channel');
+        bc.onmessage = (e) => {
+          if (
+            e.data?.type === 'NOTIFICATION_CREATED' ||
+            e.data?.type === 'NEW_SESSION_BOOKED' ||
+            e.data?.type === 'MEET_LINK_ADDED' ||
+            e.data?.type === 'SESSION_DELETED'
+          ) {
+            loadNotifications(false);
+          }
+        };
+      }
+    } catch {}
+
+    // Custom app_notification event listener (same-tab instant 0ms update)
+    const handleAppNotification = () => {
+      loadNotifications(false);
+    };
+    window.addEventListener('app_notification', handleAppNotification);
+
+    // Storage event listener (cross-tab instant fallback)
+    const handleStorage = (e) => {
+      if (e.key === 'app_unified_notifications' || e.key === 'student_notifications') {
+        loadNotifications(false);
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    // Fast periodic live background sync (every 3s) for separate devices/browsers
+    const liveInterval = setInterval(() => {
+      loadNotifications(false);
+    }, 3000);
+
+    return () => {
+      if (bc) bc.close();
+      window.removeEventListener('app_notification', handleAppNotification);
+      window.removeEventListener('storage', handleStorage);
+      clearInterval(liveInterval);
+    };
+  }, [loadNotifications]);
+
+  // Click-outside and Escape listener to close notifications window from anywhere
+  useEffect(() => {
+    if (!isNotificationsOpen) return;
+
+    const handleOutsideClick = (e) => {
+      if (notifContainerRef.current && !notifContainerRef.current.contains(e.target)) {
+        setIsNotificationsOpen(false);
+      }
+    };
+
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        setIsNotificationsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('touchstart', handleOutsideClick);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('touchstart', handleOutsideClick);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isNotificationsOpen]);
+
+  const markAllRead = () => {
+    const allIds = notifications.map(n => n.id);
+    setReadIds(allIds);
+    try { localStorage.setItem('notif_read_ids', JSON.stringify(allIds)); } catch {}
+  };
+
+  const handleNotificationClick = (notif) => {
+    if (!readIds.includes(notif.id)) {
+      const updated = [...readIds, notif.id];
+      setReadIds(updated);
+      try { localStorage.setItem('notif_read_ids', JSON.stringify(updated)); } catch {}
+    }
+
+    setIsNotificationsOpen(false);
+
+    if (notif.link) {
+      navigate(notif.link);
+    }
+  };
+
+  const formatRelativeTime = (isoStr) => {
+    try {
+      const diff = Date.now() - new Date(isoStr).getTime();
+      const mins = Math.floor(diff / 60000);
+      if (mins < 1) return lang === 'ar' ? 'الآن' : 'À l\'instant';
+      if (mins < 60) return lang === 'ar' ? `منذ ${mins} دقيقة` : `il y a ${mins} min`;
+      const hrs = Math.floor(mins / 60);
+      if (hrs < 24) return lang === 'ar' ? `منذ ${hrs} ساعة` : `il y a ${hrs}h`;
+      const days = Math.floor(hrs / 24);
+      return lang === 'ar' ? `منذ ${days} يوم` : `il y a ${days}j`;
+    } catch { return ''; }
+  };
+  // ──────────────────────────────────────────────────────────────────────────
 
   const navLinks = [
     { to: '/', label: t.nav.home, icon: 'home', end: true },
     { to: '/dashboard', label: t.nav.dashboard, icon: 'face' },
     { to: '/parent', label: t.nav.parent, icon: 'supervisor_account' },
-    { to: '/calendar', label: t.nav.calendar, icon: 'calendar_month' },
-    ...(user?.role?.toLowerCase() === 'admin' ? [{ to: '/admin', label: t.nav.admin || 'Admin', icon: 'admin_panel_settings' }] : []),
+    { to: '/games', label: t.nav.games || 'Jeux', icon: 'sports_esports' },
+    ...(showCalendar ? [{ to: '/calendar', label: t.nav.calendar, icon: 'calendar_month' }] : []),
+    ...(showAdmin ? [{ to: '/admin', label: t.nav.admin || 'Admin', icon: 'admin_panel_settings' }] : []),
   ];
 
   return (
@@ -69,7 +327,7 @@ export default function Navbar() {
         {/* Actions & Menu Toggle */}
         <div className="flex items-center gap-2 md:gap-4">
           {/* Admin Edit Navbar Button - Only visible for Admin accounts */}
-          {user?.role?.toLowerCase() === 'admin' && (
+          {user?.role?.toLowerCase().includes('admin') && (
             <button
               onClick={() => setIsEditNavOpen(true)}
               title={lang === 'ar' ? 'تعديل أسماء أزرار الهيدر' : 'Modifier les boutons du Header'}
@@ -115,7 +373,7 @@ export default function Navbar() {
 
           {/* Notifications Bell */}
           <div className="flex items-center gap-2 text-on-surface-variant">
-            <div className="relative">
+            <div ref={notifContainerRef} className="relative">
               <button
                 onClick={() => {
                   setIsNotificationsOpen(!isNotificationsOpen);
@@ -138,54 +396,86 @@ export default function Navbar() {
                 <>
                   <div
                     onClick={() => setIsNotificationsOpen(false)}
-                    className="fixed inset-0 z-40"
+                    className="fixed inset-0 z-40 bg-black/5 cursor-pointer"
                   ></div>
 
                   <div className={`absolute top-full mt-3 ${isRtl ? 'left-0' : 'right-0'} w-80 sm:w-96 bg-surface-container-lowest rounded-3xl soft-card-shadow border border-surface-variant z-50 overflow-hidden transform transition-all duration-200 notif-popover-responsive`}>
                     <div className="p-4 px-5 bg-surface-container-low border-b border-surface-variant flex justify-between items-center">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-headline-md text-headline-md text-on-surface text-base font-bold hide-notif-title-640">{t.notificationsPopover.title}</h3>
+                        <h3 className="font-headline-md text-headline-md text-on-surface text-base font-bold hide-notif-title-640">
+                          {lang === 'ar' ? 'الإشعارات' : 'Notifications'}
+                        </h3>
                         {unreadCount > 0 && (
-                          <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-[#e0d7ff] text-[#4221b6]">
-                            {t.notificationsPopover.unreadBadge}
+                          <span className="px-2 py-0.5 rounded-full text-xs font-black bg-[#4221b6] text-white">
+                            {unreadCount}
                           </span>
                         )}
                       </div>
-                      <button
-                        onClick={() => setUnreadCount(0)}
-                        className="text-xs font-label-bold text-[#4221b6] hover:underline font-bold cursor-pointer"
-                      >
-                        {t.notificationsPopover.markAllRead}
-                      </button>
+                      {notifications.length > 0 && (
+                        <button
+                          onClick={markAllRead}
+                          className="text-xs font-label-bold text-[#4221b6] hover:underline font-bold cursor-pointer"
+                        >
+                          {lang === 'ar' ? 'تحديد كمقروء' : 'Tout marquer lu'}
+                        </button>
+                      )}
                     </div>
 
-                    <div className="divide-y divide-surface-variant max-h-[360px] overflow-y-auto">
-                      {t.notificationsPopover.items.map((item) => (
-                        <div
-                          key={item.id}
-                          className={`p-4 flex gap-3 hover:bg-surface-container-low transition-colors cursor-pointer ${item.unread && unreadCount > 0 ? 'bg-[#F5F3FF]' : ''
-                            }`}
-                        >
-                          <div className={`w-10 h-10 rounded-2xl ${item.iconBg} ${item.iconColor} flex items-center justify-center shrink-0 mt-0.5 shadow-sm`}>
-                            <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-                              {item.icon}
-                            </span>
+                    <div className="divide-y divide-surface-variant max-h-[400px] overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-10 px-4 text-center gap-3">
+                          <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center">
+                            <span className="material-symbols-outlined text-2xl">notifications_none</span>
                           </div>
-                          <div className="flex-grow space-y-1">
-                            <div className="flex justify-between items-start">
-                              <h4 className="font-label-bold text-on-surface text-sm font-bold leading-tight">
-                                {item.title}
-                              </h4>
-                              <span className="text-[11px] text-tertiary whitespace-nowrap ml-2">
-                                {item.time}
-                              </span>
-                            </div>
-                            <p className="text-xs text-on-surface-variant leading-relaxed">
-                              {item.desc}
-                            </p>
-                          </div>
+                          <p className="text-xs font-bold text-slate-400">
+                            {lang === 'ar' ? 'لا توجد إشعارات بعد' : 'Aucune notification pour l\'instant'}
+                          </p>
                         </div>
-                      ))}
+                      ) : (
+                        notifications.map((notif) => {
+                          const isUnread = !readIds.includes(notif.id);
+                          const titleText = typeof notif.title === 'object'
+                            ? (notif.title[lang] || notif.title.fr || notif.title.ar || 'Notification')
+                            : (notif.title || 'Notification');
+                          
+                          const descText = typeof notif.desc === 'object'
+                            ? (notif.desc[lang] || notif.desc.fr || notif.desc.ar || '')
+                            : (notif.desc || '');
+
+                          const iconName = notif.icon || (notif.type === 'MEET_LINK_ADDED' ? 'videocam' : notif.type === 'NEW_USER_REGISTERED' ? 'person_add' : 'calendar_month');
+                          const iconBg = notif.iconBg || (notif.type === 'MEET_LINK_ADDED' ? 'bg-emerald-100 text-emerald-700' : notif.type === 'NEW_USER_REGISTERED' ? 'bg-blue-100 text-blue-700' : 'bg-[#e0d7ff] text-[#4221b6]');
+
+                          return (
+                            <div
+                              key={notif.id}
+                              onClick={() => handleNotificationClick(notif)}
+                              className={`p-4 flex gap-3 hover:bg-surface-container-low transition-colors cursor-pointer border-b border-surface-variant/40 last:border-b-0 ${isUnread ? 'bg-[#F5F3FF]' : ''}`}
+                            >
+                              <div className={`w-10 h-10 rounded-2xl ${iconBg} flex items-center justify-center shrink-0 mt-0.5 shadow-sm`}>
+                                <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+                                  {iconName}
+                                </span>
+                              </div>
+                              <div className="flex-grow space-y-1 min-w-0">
+                                <div className="flex justify-between items-start gap-2">
+                                  <h4 className="font-label-bold text-on-surface text-xs sm:text-sm font-bold leading-tight flex items-center gap-1.5">
+                                    <span>{titleText}</span>
+                                    {isUnread && (
+                                      <span className="inline-block w-2 h-2 rounded-full bg-[#4221b6] shrink-0"></span>
+                                    )}
+                                  </h4>
+                                  <span className="text-[10px] sm:text-[11px] text-tertiary whitespace-nowrap shrink-0">
+                                    {formatRelativeTime(notif.timestamp)}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-on-surface-variant leading-relaxed">
+                                  {descText}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
                     </div>
 
                     <div className="p-3 bg-surface-container-low border-t border-surface-variant text-center">
@@ -193,8 +483,8 @@ export default function Navbar() {
                         onClick={() => setIsNotificationsOpen(false)}
                         className="text-xs font-label-bold text-on-surface-variant hover:text-primary transition-colors font-bold cursor-pointer inline-flex items-center gap-1"
                       >
-                        <span>{t.notificationsPopover.viewAll}</span>
-                        <span className="material-symbols-outlined text-sm">{isRtl ? 'arrow_back' : 'arrow_forward'}</span>
+                        <span>{lang === 'ar' ? 'إغلاق' : 'Fermer'}</span>
+                        <span className="material-symbols-outlined text-sm">close</span>
                       </button>
                     </div>
                   </div>
@@ -213,15 +503,36 @@ export default function Navbar() {
 
           {/* Account Badge / Auth buttons (Top Bar) */}
           {user ? (
-            <div className="flex items-center gap-2 hide-on-471">
-              <div className="hidden sm:flex flex-col text-right rtl:text-left">
-                <span className="text-xs font-bold text-on-surface leading-tight">{user.parentName || user.email}</span>
-                <span className="text-[10px] text-on-surface-variant">{user.childName ? `Parent de ${user.childName}` : 'Parent'}</span>
+            <div className="flex items-center gap-2.5 hide-on-471">
+              <div className="hidden sm:flex flex-col text-right rtl:text-left items-end rtl:items-start max-w-[220px]">
+                <div className="flex items-center gap-1.5 flex-wrap justify-end rtl:justify-start">
+                  <span className="text-xs font-black text-on-surface leading-tight truncate">
+                    {user.parentName || (user.email ? user.email.split('@')[0] : 'Compte')}
+                  </span>
+                  {formatRoleLabel(user.role || user.roles).map((rb, rIdx) => (
+                    <span
+                      key={rIdx}
+                      className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${rb.color}`}
+                    >
+                      {rb.label}
+                    </span>
+                  ))}
+                </div>
+                {user.email && (
+                  <span className="text-[11px] text-slate-500 font-semibold leading-tight truncate mt-0.5" title={user.email}>
+                    {user.email}
+                  </span>
+                )}
+                {user.childName && (
+                  <span className="text-[10px] text-slate-400 font-medium">
+                    (Enfant: {user.childName})
+                  </span>
+                )}
               </div>
               <button
                 onClick={logoutUser}
                 title="Déconnexion"
-                className="w-10 h-10 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-colors flex items-center justify-center cursor-pointer font-bold"
+                className="w-10 h-10 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-all flex items-center justify-center cursor-pointer font-bold shrink-0 hover:scale-105 shadow-sm"
               >
                 <span className="material-symbols-outlined text-lg">logout</span>
               </button>
@@ -367,11 +678,30 @@ export default function Navbar() {
                 <div className="flex flex-col gap-3 p-3.5 rounded-2xl bg-[#faf9f5] border border-slate-200/60">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-[#4221b6] text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
-                      {user.parentName ? user.parentName.charAt(0).toUpperCase() : '👨‍👩‍👧'}
+                      {user.parentName ? user.parentName.charAt(0).toUpperCase() : '👤'}
                     </div>
-                    <div className="flex flex-col overflow-hidden text-left rtl:text-right">
-                      <span className="text-sm font-bold text-[#1c0576] truncate">{user.parentName || user.email}</span>
-                      <span className="text-xs text-slate-500 truncate">{user.childName ? `Parent de ${user.childName}` : 'Parent'}</span>
+                    <div className="flex flex-col overflow-hidden text-left rtl:text-right min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-bold text-[#1c0576] truncate">{user.parentName || (user.email ? user.email.split('@')[0] : 'Compte')}</span>
+                        {formatRoleLabel(user.role || user.roles).map((rb, rIdx) => (
+                          <span
+                            key={rIdx}
+                            className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${rb.color}`}
+                          >
+                            {rb.label}
+                          </span>
+                        ))}
+                      </div>
+                      {user.email && (
+                        <span className="text-xs text-slate-500 font-medium truncate mt-0.5" title={user.email}>
+                          {user.email}
+                        </span>
+                      )}
+                      {user.childName && (
+                        <span className="text-[11px] text-slate-400 font-medium truncate">
+                          (Enfant: {user.childName})
+                        </span>
+                      )}
                     </div>
                   </div>
                   <button

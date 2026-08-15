@@ -11,6 +11,7 @@ import ParentPage from './pages/ParentPage';
 import CalendarPage from './pages/CalendarPage';
 import AdminPage from './pages/AdminPage';
 import AuthPage from './pages/AuthPage';
+import GamesPage from './pages/GamesPage';
 import AdminRoute from './components/AdminRoute';
 
 export default function App() {
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/parent" element={<ParentPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
+          <Route path="/games" element={<GamesPage />} />
           <Route
             path="/admin"
             element={

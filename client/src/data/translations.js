@@ -306,12 +306,12 @@ export const translations = {
         activeTag: "Séance d'essai sélectionnée ✓"
       },
       step1Title: "Choisis un jour",
+      availableDays: ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"],
       daysOfWeek: ["Lu", "Ma", "Me", "Je", "Ve", "Sa", "Di"],
       step2Title: "À quelle heure ?",
       timeSlots: ["10:00", "14:00", "16:30"],
       step3Title: "Mode de paiement",
       paymentMethods: [
-        { id: 'card', name: 'Carte Bancaire / CIB', desc: 'Visa, Mastercard, E-Dinar (Cryptage 100% sécurisé)', icon: 'credit_card', badge: 'Recommandé' },
         { id: 'fawran', name: 'Payement virement ou Fawran (فوراً)', desc: 'Paiement immédiat par virement bancaire ou via le service Fawran', icon: 'bolt', badge: 'Rapide' }
       ],
       confirmButton: "Confirmer la réservation",
@@ -692,12 +692,12 @@ export const translations = {
         activeTag: "تم اختيار الجلسة التجريبية ✓"
       },
       step1Title: "اختر يوماً",
+      availableDays: ["الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"],
       daysOfWeek: ["الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت", "الأحد"],
       step2Title: "في أي وقت؟",
       timeSlots: ["10:00", "14:00", "16:30"],
       step3Title: "طريقة الدفع",
       paymentMethods: [
-        { id: 'card', name: 'البطاقة البنكية (Carte Bancaire / CIB)', desc: 'فيزا، ماستركارد، أو الدينار الإلكتروني (دفع آمن 100%)', icon: 'credit_card', badge: 'موصى به' },
         { id: 'fawran', name: 'دفع عبر التحويل أو فوراً (Payement virement ou Fawran)', desc: 'دفع فوري عبر التحويل البنكي أو تطبيق فوراً السريع', icon: 'bolt', badge: 'فوري' }
       ],
       confirmButton: "تأكيد الحجز",
@@ -1083,12 +1083,12 @@ export const translations = {
         activeTag: "Free Trial Selected ✓"
       },
       step1Title: "Choose a Day",
+      availableDays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
       daysOfWeek: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
       step2Title: "What time?",
       timeSlots: ["10:00", "14:00", "16:30"],
       step3Title: "Payment Method",
       paymentMethods: [
-        { id: 'card', name: 'Credit Card / CIB', desc: 'Visa, Mastercard, E-Dinar (100% secure encryption)', icon: 'credit_card', badge: 'Recommended' },
         { id: 'fawran', name: 'Bank Transfer or Fawran (فوراً)', desc: 'Instant payment via bank transfer or Fawran service', icon: 'bolt', badge: 'Fast' }
       ],
       confirmButton: "Confirm Booking",

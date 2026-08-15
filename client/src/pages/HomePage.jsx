@@ -4,17 +4,31 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import VideoModal from '../components/VideoModal';
 import EditSectionModal from '../components/EditSectionModal';
+import ManageTutorsModal from '../components/ManageTutorsModal';
 import { API_BASE_URL } from '../config';
+import { createNotification } from '../utils/notifications';
 
 export default function HomePage() {
   const { lang, t, isRtl } = useLanguage();
   const { user, isLoggedIn, loginUser } = useAuth();
   const navigate = useNavigate();
 
+  // Check if user role contains 'admin' (e.g. 'admin', 'admin, maitresse', ['admin', 'maitresse'])
+  const isAdmin = (() => {
+    if (!user) return false;
+    if (user.isAdmin === true) return true;
+    const r = user.role || user.roles;
+    if (!r) return false;
+    if (typeof r === 'string') return r.toLowerCase().includes('admin');
+    if (Array.isArray(r)) return r.some((item) => String(item).toLowerCase().includes('admin'));
+    return false;
+  })();
+
   const [authMode, setAuthMode] = useState('login');
   const [showPassword, setShowPassword] = useState(false);
   const [isVideoOpen, setIsVideoOpen] = useState(false);
   const [editingSectionModal, setEditingSectionModal] = useState(null); // { key, title }
+  const [isManageTutorsOpen, setIsManageTutorsOpen] = useState(false);
 
   // Form Fields State
   const [parentName, setParentName] = useState('');
@@ -52,10 +66,34 @@ export default function HomePage() {
       }
 
       loginUser(data.user);
-      if (data.user?.role?.toLowerCase() === 'admin') {
+      if (authMode === 'signup') {
+        createNotification({
+          type: 'NEW_USER_REGISTERED',
+          targetRoles: ['admin'],
+          title: {
+            fr: `👤 Nouveau compte client inscrit !`,
+            ar: `👤 تسجيل حساب مستخدم جديد !`,
+            en: `👤 New user account registered!`,
+          },
+          desc: {
+            fr: `${payload.parentName || payload.email} vient de créer son compte (Enfant: ${payload.childName || 'Non spécifié'}).`,
+            ar: `قام ${payload.parentName || payload.email} بإنشاء حسابه الآن (الطفل: ${payload.childName || 'غير محدد'}).`,
+            en: `${payload.parentName || payload.email} just registered (Child: ${payload.childName || 'Not specified'}).`,
+          },
+          icon: 'person_add',
+          iconBg: 'bg-blue-100 text-blue-700',
+          link: '/admin',
+          meta: {
+            email: payload.email,
+            parentName: payload.parentName,
+            childName: payload.childName,
+          },
+        });
+        navigate('/');
+      } else if (checkIsAdminUser(data.user)) {
         navigate('/admin');
       } else {
-        navigate('/parent');
+        navigate('/');
       }
     } catch (err) {
       setErrorMsg(err.message);
@@ -64,12 +102,22 @@ export default function HomePage() {
     }
   };
 
+  function checkIsAdminUser(userObj) {
+    if (!userObj) return false;
+    if (userObj.isAdmin === true) return true;
+    const r = userObj.role || userObj.roles;
+    if (!r) return false;
+    if (typeof r === 'string') return r.toLowerCase().includes('admin');
+    if (Array.isArray(r)) return r.some((item) => String(item).toLowerCase().includes('admin'));
+    return false;
+  }
+
   return (
     <>
       {/* 1. Top Hero Section */}
       <section className="w-full bg-[#FAF8F5] py-10 md:py-16 px-container-margin overflow-hidden relative border-b border-surface-variant/40">
         {/* Admin Edit Button for Hero Section */}
-        {user?.role?.toLowerCase() === 'admin' && (
+        {isAdmin && (
           <button
             onClick={() => setEditingSectionModal({ key: 'hero', title: lang === 'ar' ? 'قسم الهيرو والترحيب' : 'Section Hero' })}
             className="absolute top-4 right-4 sm:top-6 sm:right-6 z-30 flex items-center gap-1.5 bg-[#4221b6] text-white px-3.5 py-2 rounded-full font-black text-xs shadow-xl hover:scale-105 transition-all cursor-pointer border-2 border-white/40"
@@ -78,6 +126,7 @@ export default function HomePage() {
             <span>{lang === 'ar' ? 'تعديل هذا القسم' : 'Modifier la section'}</span>
           </button>
         )}
+
 
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
           {/* Left Side: Information & Tutors */}
@@ -103,14 +152,16 @@ export default function HomePage() {
               <div className="bg-gradient-to-r from-[#e0d7ff] to-[#b0fdb5] p-5 rounded-3xl border-2 border-[#8c90f6] shadow-md flex flex-col sm:flex-row items-center justify-between gap-4 my-1">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-[#4221b6] text-white flex items-center justify-center text-xl font-black shadow-sm shrink-0">
-                    👨‍👩‍👧
+                    {t.hero?.welcomeEmoji || '👨‍👩‍👧'}
                   </div>
                   <div>
                     <h3 className="text-base font-bold text-[#1c0576]">
-                      {lang === 'ar' ? `مرحباً بك، ${user?.parentName || 'عزيزي الولي'}!` : lang === 'en' ? `Welcome, ${user?.parentName || 'Dear Parent'}!` : `Bienvenue, ${user?.parentName || 'Cher Parent'} !`}
+                      {(t.hero?.welcomePrefix !== undefined ? t.hero.welcomePrefix : (lang === 'ar' ? 'مرحباً بك، ' : lang === 'en' ? 'Welcome, ' : 'Bienvenue, '))}
+                      {user?.parentName || (lang === 'ar' ? 'عزيزي الولي' : lang === 'en' ? 'Dear Parent' : 'Cher Parent')} !
                     </h3>
                     <p className="text-xs text-[#0d4013] font-medium mt-0.5">
-                      {lang === 'ar' ? `حساب طفلك: ${user?.childName || 'المتعلم'}` : lang === 'en' ? `Child's space: ${user?.childName || 'Learner'}` : `Espace de votre enfant: ${user?.childName || 'Élève'}`}
+                      {(t.hero?.childSpacePrefix !== undefined ? t.hero.childSpacePrefix : (lang === 'ar' ? 'حساب طفلك: ' : lang === 'en' ? "Child's space: " : 'Espace de votre enfant: '))}
+                      {user?.childName || (lang === 'ar' ? 'المتعلم' : lang === 'en' ? 'Learner' : 'Élève')}
                     </p>
                   </div>
                 </div>
@@ -118,11 +169,12 @@ export default function HomePage() {
                   onClick={() => navigate('/parent')}
                   className="px-5 py-2.5 rounded-full bg-[#4221b6] text-white font-bold text-xs shadow-md hover:scale-105 transition-transform shrink-0 cursor-pointer flex items-center gap-1.5"
                 >
-                  <span>{t.nav?.parent}</span>
+                  <span>{t.hero?.welcomeBtn || t.nav?.parent || (lang === 'ar' ? 'فضاء الولي' : 'Espace Parent')}</span>
                   <span className="material-symbols-outlined text-sm">{isRtl ? 'arrow_back' : 'arrow_forward'}</span>
                 </button>
               </div>
             )}
+
 
             {/* 3 Feature Badges */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
@@ -137,27 +189,64 @@ export default function HomePage() {
             </div>
 
             {/* Nos Maîtresses Section */}
-            <div className="pt-4 space-y-4">
-              <div className="flex flex-col items-start gap-1">
-                <h2 className="text-xl font-bold text-[#2C3E2E]">{t.hero?.tutorsTitle}</h2>
-                <div className="h-0.5 w-12 bg-[#3B5E35] rounded-full"></div>
+            <div className="pt-4 space-y-4 relative">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-col items-start gap-1">
+                  <h2 className="text-xl font-bold text-[#2C3E2E]">{t.hero?.tutorsTitle}</h2>
+                  <div className="h-0.5 w-12 bg-[#3B5E35] rounded-full"></div>
+                </div>
+
+                {/* Admin Manage Tutors Button */}
+                {isAdmin && (
+                  <button
+                    onClick={() => setIsManageTutorsOpen(true)}
+                    className="flex items-center gap-1.5 bg-[#4221b6] text-white px-3.5 py-1.5 rounded-full font-black text-xs shadow-md hover:scale-105 transition-all cursor-pointer border border-white/40 shrink-0"
+                  >
+                    <span className="material-symbols-outlined text-sm">edit_note</span>
+                    <span>{lang === 'ar' ? 'إدارة كروت المعلمات' : 'Gérer les maîtresses'}</span>
+                  </button>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {t.hero?.tutors?.map((tutor, idx) => (
-                  <div key={idx} className="bg-white p-4 rounded-2xl shadow-sm border border-surface-variant/60 flex flex-col items-center text-center gap-2 hover:shadow-md transition-shadow">
-                    <img
-                      src={tutor.img}
-                      alt={tutor.name}
-                      className="w-20 h-24 object-cover rounded-xl shadow-inner"
-                    />
-                    <h3 className="font-bold text-sm text-[#2C3E2E] mt-1">{tutor.name}</h3>
-                    <p className="text-[11px] text-[#5A6E5E] leading-relaxed line-clamp-3">
-                      {tutor.desc}
-                    </p>
-                    <span className="material-symbols-outlined text-xs text-[#3B5E35] mt-auto" style={{ fontVariationSettings: "'FILL' 1" }}>favorite</span>
-                  </div>
-                ))}
+                {t.hero?.tutors?.map((tutor, idx) => {
+                  const targetQuery = tutor.teacherId
+                    ? `teacherId=${tutor.teacherId}&teacher=${encodeURIComponent(tutor.name || '')}`
+                    : `teacher=${encodeURIComponent(tutor.name || '')}`;
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => navigate(`/calendar?${targetQuery}`)}
+                      className="bg-white p-4 rounded-2xl shadow-sm border border-surface-variant/60 flex flex-col items-center text-center gap-2 hover:shadow-xl hover:border-[#4221b6] hover:scale-[1.03] transition-all cursor-pointer group relative overflow-hidden"
+                      title={lang === 'ar' ? `حجز حصة مع ${tutor.name}` : `Réserver avec ${tutor.name}`}
+                    >
+                      <div className="relative">
+                        <img
+                          src={tutor.img}
+                          alt={tutor.name}
+                          className="w-20 h-24 object-cover rounded-xl shadow-inner group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <span className="absolute -bottom-2 -right-2 w-6 h-6 rounded-full bg-[#4221b6] text-white flex items-center justify-center shadow-md">
+                          <span className="material-symbols-outlined text-xs">calendar_month</span>
+                        </span>
+                      </div>
+                      <h3 className="font-bold text-sm text-[#2C3E2E] group-hover:text-[#4221b6] transition-colors mt-1">
+                        {tutor.name}
+                      </h3>
+                      <p className="text-[11px] text-[#5A6E5E] leading-relaxed line-clamp-3">
+                        {tutor.desc}
+                      </p>
+                      
+                      {/* Booking CTA chip */}
+                      <div className="mt-auto pt-2 w-full flex items-center justify-center">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#4221b6] bg-[#e0d7ff]/60 group-hover:bg-[#4221b6] group-hover:text-white px-3 py-1 rounded-full transition-all">
+                          <span className="material-symbols-outlined text-xs">event_available</span>
+                          <span>{lang === 'ar' ? 'عرض المواعيد والحجز' : 'Voir les créneaux'}</span>
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -407,7 +496,7 @@ export default function HomePage() {
       {/* 2. Video Teaser Section */}
       <section className="w-full bg-gradient-to-br from-[#1c0576] via-[#2d0f8a] to-[#4221b6] py-16 md:py-24 px-container-margin relative overflow-hidden">
         {/* Admin Edit Button for Video Section */}
-        {user?.role?.toLowerCase() === 'admin' && (
+        {isAdmin && (
           <button
             onClick={() => setEditingSectionModal({ key: 'videoSection', title: lang === 'ar' ? 'قسم الفيديو التوضيحي' : 'Section Vidéo Démo' })}
             className="absolute top-4 right-4 sm:top-6 sm:right-6 z-30 flex items-center gap-1.5 bg-white text-[#4221b6] px-3.5 py-2 rounded-full font-black text-xs shadow-xl hover:scale-105 transition-all cursor-pointer border-2 border-[#4221b6]"
@@ -470,8 +559,9 @@ export default function HomePage() {
               className="px-8 py-3.5 rounded-full bg-white text-[#4221b6] font-extrabold text-sm shadow-xl hover:shadow-white/20 hover:scale-105 transition-all cursor-pointer flex items-center gap-2.5"
             >
               <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>play_circle</span>
-              {lang === 'ar' ? 'شاهد الفيديو الآن' : 'Regarder maintenant'}
+              {t.homePage?.videoBtn || (lang === 'ar' ? 'شاهد الفيديو الآن' : lang === 'en' ? 'Watch now' : 'Regarder maintenant')}
             </button>
+
           </div>
         </div>
       </section>
@@ -479,7 +569,7 @@ export default function HomePage() {
       {/* 3. How It Works Section */}
       <section className="w-full bg-white py-16 md:py-20 px-container-margin relative border-b border-surface-variant/40">
         {/* Admin Edit Button for How It Works Section */}
-        {user?.role?.toLowerCase() === 'admin' && (
+        {isAdmin && (
           <button
             onClick={() => setEditingSectionModal({ key: 'howItWorks', title: lang === 'ar' ? 'قسم كيف تعمل المنصة' : 'Section Comment ça marche' })}
             className="absolute top-4 right-4 sm:top-6 sm:right-6 z-30 flex items-center gap-1.5 bg-[#4221b6] text-white px-3.5 py-2 rounded-full font-black text-xs shadow-xl hover:scale-105 transition-all cursor-pointer border-2 border-white/40"
@@ -519,7 +609,7 @@ export default function HomePage() {
       {/* 4. Testimonials Section */}
       <section className="w-full bg-[#FAF8F5] py-16 md:py-20 px-container-margin relative border-b border-surface-variant/40">
         {/* Admin Edit Button for Testimonials Section */}
-        {user?.role?.toLowerCase() === 'admin' && (
+        {isAdmin && (
           <button
             onClick={() => setEditingSectionModal({ key: 'testimonials', title: lang === 'ar' ? 'قسم آراء الأولياء' : 'Section Témoignages' })}
             className="absolute top-4 right-4 sm:top-6 sm:right-6 z-30 flex items-center gap-1.5 bg-[#4221b6] text-white px-3.5 py-2 rounded-full font-black text-xs shadow-xl hover:scale-105 transition-all cursor-pointer border-2 border-white/40"
@@ -577,6 +667,11 @@ export default function HomePage() {
           sectionTitle={editingSectionModal.title}
           onClose={() => setEditingSectionModal(null)}
         />
+      )}
+
+      {/* Admin Manage Tutors Cards Modal */}
+      {isManageTutorsOpen && (
+        <ManageTutorsModal onClose={() => setIsManageTutorsOpen(false)} />
       )}
     </>
   );

@@ -63,6 +63,49 @@
   scrollbar-width: none;
 }
 
+/* Premium Friendly Shimmer Skeleton Animation */
+@keyframes skeletonShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(224, 215, 255, 0.45) 0%,
+    rgba(255, 255, 255, 0.85) 50%,
+    rgba(224, 215, 255, 0.45) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.skeleton-shimmer-subtle {
+  background: linear-gradient(
+    90deg,
+    rgba(241, 245, 249, 0.7) 0%,
+    rgba(255, 255, 255, 0.95) 50%,
+    rgba(241, 245, 249, 0.7) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.8s ease-in-out infinite;
+}
+
+.skeleton-shimmer-emerald {
+  background: linear-gradient(
+    90deg,
+    rgba(209, 250, 229, 0.5) 0%,
+    rgba(255, 255, 255, 0.9) 50%,
+    rgba(209, 250, 229, 0.5) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.7s ease-in-out infinite;
+}
+
 
 
 /* Creative Professional Nav Pill Hover & Active Effects */

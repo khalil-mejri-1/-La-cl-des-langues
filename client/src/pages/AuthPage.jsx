@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
+import { createNotification } from '../utils/notifications';
 
 export default function AuthPage() {
   const { t, isRtl } = useLanguage();
@@ -59,11 +60,35 @@ export default function AuthPage() {
       // Login User
       loginUser(data.user);
 
-      // Redirect based on role
-      if (data.user?.role?.toLowerCase() === 'admin') {
+      // Redirect directly to Home Page on signup
+      if (authMode === 'signup') {
+        createNotification({
+          type: 'NEW_USER_REGISTERED',
+          targetRoles: ['admin'],
+          title: {
+            fr: `👤 Nouveau compte client inscrit !`,
+            ar: `👤 تسجيل حساب مستخدم جديد !`,
+            en: `👤 New user account registered!`,
+          },
+          desc: {
+            fr: `${payload.parentName || payload.email} vient de créer son compte (Enfant: ${payload.childName || 'Non spécifié'}).`,
+            ar: `قام ${payload.parentName || payload.email} بإنشاء حسابه الآن (الطفل: ${payload.childName || 'غير محدد'}).`,
+            en: `${payload.parentName || payload.email} just registered (Child: ${payload.childName || 'Not specified'}).`,
+          },
+          icon: 'person_add',
+          iconBg: 'bg-blue-100 text-blue-700',
+          link: '/admin',
+          meta: {
+            email: payload.email,
+            parentName: payload.parentName,
+            childName: payload.childName,
+          },
+        });
+        navigate('/');
+      } else if (data.user?.role?.toLowerCase()?.includes('admin')) {
         navigate('/admin');
       } else {
-        navigate('/parent');
+        navigate('/');
       }
     } catch (err) {
       setErrorMsg(err.message);

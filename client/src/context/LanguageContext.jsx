@@ -112,11 +112,16 @@ export function LanguageProvider({ children }) {
 
   // Custom Tutors Cards Array
   if (customSections?.hero?.tutors && Array.isArray(customSections.hero.tutors)) {
-    heroSection.tutors = customSections.hero.tutors.map((tut) => ({
-      name: tut[lang]?.name || tut.name || tut.fr?.name || '',
-      desc: tut[lang]?.desc || tut.desc || tut.fr?.desc || '',
-      img: tut.img || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=400',
-    }));
+    heroSection.tutors = customSections.hero.tutors
+      .filter((tut) => tut.visible !== false && tut.hidden !== true)
+      .map((tut) => ({
+        id: tut.id || tut.teacherId,
+        teacherId: tut.teacherId,
+        visible: tut.visible !== false,
+        name: tut[lang]?.name || tut.name || tut.fr?.name || '',
+        desc: tut[lang]?.desc || tut.desc || tut.fr?.desc || '',
+        img: tut.img || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=400',
+      }));
   }
 
   // Video Demo Customizations
@@ -128,18 +133,51 @@ export function LanguageProvider({ children }) {
     homePageSection.videoTag = customSections.hero[lang].videoTag || homePageSection.videoTag;
     homePageSection.videoTitle = customSections.hero[lang].videoTitle || homePageSection.videoTitle;
     homePageSection.videoDesc = customSections.hero[lang].videoDesc || homePageSection.videoDesc;
+    if (customSections.hero[lang].videoBtn) {
+      homePageSection.videoBtn = customSections.hero[lang].videoBtn;
+    }
   }
+
   if (customSections?.hero?.videoUrl || customSections?.hero?.[lang]?.videoUrl) {
     homePageSection.videoUrl = customSections.hero.videoUrl || customSections.hero[lang]?.videoUrl;
   }
 
-  const howItWorksSection = customSections?.howItWorks?.[lang]
-    ? { ...baseTranslations.howItWorks, ...customSections.howItWorks[lang] }
-    : baseTranslations.howItWorks;
+  const howItWorksSection = (() => {
+    const base = customSections?.howItWorks?.[lang]
+      ? { ...baseTranslations.howItWorks, ...customSections.howItWorks[lang] }
+      : { ...baseTranslations.howItWorks };
 
-  const testimonialsSection = customSections?.testimonials?.[lang]
-    ? { ...baseTranslations.Testimonials, ...customSections.testimonials[lang] }
-    : baseTranslations.Testimonials;
+    // If admin saved custom steps, map them to current language
+    if (customSections?.howItWorks?.steps) {
+      base.steps = customSections.howItWorks.steps.map((s) => ({
+        stepNum: s[lang]?.stepNum || s.fr?.stepNum || '',
+        title: s[lang]?.title || s.fr?.title || '',
+        desc: s[lang]?.desc || s.fr?.desc || '',
+        icon: s.icon || 'star',
+        bgIcon: s.bgIcon || 'bg-[#EEF2FF]',
+        iconColor: s.iconColor || 'text-[#4221b6]',
+      }));
+    }
+    return base;
+  })();
+
+
+  const testimonialsSection = (() => {
+    const base = customSections?.testimonials?.[lang]
+      ? { ...baseTranslations.Testimonials, ...customSections.testimonials[lang] }
+      : { ...baseTranslations.Testimonials };
+
+    if (customSections?.testimonials?.list) {
+      base.list = customSections.testimonials.list.map((item) => ({
+        id: item.id || Math.random(),
+        stars: Number(item.stars) || 5,
+        quote: item[lang]?.quote || item.fr?.quote || (typeof item.quote === 'string' ? item.quote : ''),
+        author: item[lang]?.author || item.fr?.author || (typeof item.author === 'string' ? item.author : ''),
+      }));
+    }
+    return base;
+  })();
+
 
   const trustBarSection = customSections?.trustBar?.[lang]
     ? customSections.trustBar[lang]
@@ -163,12 +201,24 @@ export function LanguageProvider({ children }) {
   };
 
   // Calendar Page Customizations
+  const rawAvailableDays = customSections?.calendarStep1?.availableDays || baseTranslations.calendarPage?.availableDays;
+  const formattedAvailableDays = Array.isArray(rawAvailableDays)
+    ? rawAvailableDays.map((d) => (typeof d === 'object' ? (d[lang] || d.fr || d.ar || d.en || '') : d)).filter(Boolean)
+    : baseTranslations.calendarPage?.availableDays;
+
+  const rawTimeSlots = customSections?.calendarStep2?.timeSlots || baseTranslations.calendarPage?.timeSlots;
+  const formattedTimeSlots = Array.isArray(rawTimeSlots)
+    ? rawTimeSlots.map((tItem) => (typeof tItem === 'object' ? (tItem[lang] || tItem.fr || tItem.ar || tItem.en || '') : tItem)).filter(Boolean)
+    : baseTranslations.calendarPage?.timeSlots;
+
   const calendarPageSection = {
     ...baseTranslations.calendarPage,
     ...(customSections?.calendarHeader?.[lang] || {}),
     ...(customSections?.calendarStep1?.[lang] || {}),
     ...(customSections?.calendarStep2?.[lang] || {}),
     ...(customSections?.calendarStep3?.[lang] || {}),
+    availableDays: formattedAvailableDays,
+    timeSlots: formattedTimeSlots,
     packOffer: {
       ...baseTranslations.calendarPage?.packOffer,
       ...(customSections?.calendarPack?.[lang] || {}),

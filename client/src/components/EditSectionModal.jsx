@@ -58,6 +58,11 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
           videoTag: existing.fr?.videoTag || "Démonstration vidéo",
           videoTitle: existing.fr?.videoTitle || "Découvrez notre méthode en vidéo",
           videoDesc: existing.fr?.videoDesc || "Regardez comment nos maîtresses certifiées accompagnent vos enfants vers le succès.",
+          videoBtn: existing.fr?.videoBtn || "Regarder maintenant",
+          welcomePrefix: existing.fr?.welcomePrefix || "Bienvenue, ",
+          childSpacePrefix: existing.fr?.childSpacePrefix || "Espace de votre enfant: ",
+          welcomeBtn: existing.fr?.welcomeBtn || "Espace Parent",
+          welcomeEmoji: existing.fr?.welcomeEmoji || "👨‍👩‍👧",
         },
         ar: {
           tag: existing.ar?.tag || "تعلم. تقدم. ازدهر.",
@@ -67,6 +72,11 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
           videoTag: existing.ar?.videoTag || "عرض توضيحي",
           videoTitle: existing.ar?.videoTitle || "اكتشف أسلوبنا التعلمي بالفيديو",
           videoDesc: existing.ar?.videoDesc || "شاهد كيف ترافق معلماتنا المتميزات أطفالكم نحو النجاح والتألق.",
+          videoBtn: existing.ar?.videoBtn || "شاهد الفيديو الآن",
+          welcomePrefix: existing.ar?.welcomePrefix || "مرحباً بك، ",
+          childSpacePrefix: existing.ar?.childSpacePrefix || "حساب طفلك: ",
+          welcomeBtn: existing.ar?.welcomeBtn || "فضاء الولي",
+          welcomeEmoji: existing.ar?.welcomeEmoji || "👨‍👩‍👧",
         },
         en: {
           tag: existing.en?.tag || "Learn. Progress. Succeed.",
@@ -76,9 +86,38 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
           videoTag: existing.en?.videoTag || "Video Demo",
           videoTitle: existing.en?.videoTitle || "Discover our learning method in video",
           videoDesc: existing.en?.videoDesc || "Watch how our certified teachers accompany your children towards success.",
+          videoBtn: existing.en?.videoBtn || "Watch now",
+          welcomePrefix: existing.en?.welcomePrefix || "Welcome, ",
+          childSpacePrefix: existing.en?.childSpacePrefix || "Child's space: ",
+          welcomeBtn: existing.en?.welcomeBtn || "Parent Area",
+          welcomeEmoji: existing.en?.welcomeEmoji || "👨‍👩‍👧",
         },
         features: existing.features || defaultFeatures,
         tutors: existing.tutors || defaultTutors,
+        videoUrl: existing.videoUrl || 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      };
+    }
+
+    if (sectionKey === 'videoSection') {
+      return {
+        fr: {
+          videoTag: existing.fr?.videoTag || "Démonstration vidéo",
+          videoTitle: existing.fr?.videoTitle || "Découvrez notre méthode en vidéo",
+          videoDesc: existing.fr?.videoDesc || "Regardez comment nos maîtresses certifiées accompagnent vos enfants vers le succès.",
+          videoBtn: existing.fr?.videoBtn || "Regarder maintenant",
+        },
+        ar: {
+          videoTag: existing.ar?.videoTag || "عرض توضيحي",
+          videoTitle: existing.ar?.videoTitle || "اكتشف أسلوبنا التعلمي بالفيديو",
+          videoDesc: existing.ar?.videoDesc || "شاهد كيف ترافق معلماتنا المتميزات أطفالكم نحو النجاح والتألق.",
+          videoBtn: existing.ar?.videoBtn || "شاهد الفيديو الآن",
+        },
+        en: {
+          videoTag: existing.en?.videoTag || "Video Demo",
+          videoTitle: existing.en?.videoTitle || "Discover our method in video",
+          videoDesc: existing.en?.videoDesc || "Watch how our certified teachers guide your children to success.",
+          videoBtn: existing.en?.videoBtn || "Watch now",
+        },
         videoUrl: existing.videoUrl || 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
       };
     }
@@ -134,6 +173,7 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
         fr: { step1Title: existing.fr?.step1Title || "Choisissez un jour" },
         ar: { step1Title: existing.ar?.step1Title || "اختر اليوم المناسب" },
         en: { step1Title: existing.en?.step1Title || "Select a Day" },
+        ...(existing.availableDays ? { availableDays: existing.availableDays } : {}),
       };
     }
 
@@ -142,6 +182,7 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
         fr: { step2Title: existing.fr?.step2Title || "Choisissez l'heure" },
         ar: { step2Title: existing.ar?.step2Title || "اختر التوقيت المناسب" },
         en: { step2Title: existing.en?.step2Title || "Select Time Slot" },
+        ...(existing.timeSlots ? { timeSlots: existing.timeSlots } : {}),
       };
     }
 
@@ -386,6 +427,37 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
     }
 
     if (sectionKey === 'howItWorks') {
+      const defaultSteps = [
+        {
+          id: '1',
+          icon: 'grid_view',
+          fr: { stepNum: '1', title: 'Inscription', desc: 'Créez un compte parent en quelques clics.' },
+          ar: { stepNum: '1', title: 'التسجيل', desc: 'أنشئ حساب الولي في بضع خطوات سهلة.' },
+          en: { stepNum: '1', title: 'Sign Up', desc: 'Create a parent account in a few clicks.' },
+        },
+        {
+          id: '2',
+          icon: 'event_available',
+          fr: { stepNum: '2', title: 'Réservation', desc: "Choisissez l'horaire idéal pour votre enfant." },
+          ar: { stepNum: '2', title: 'الحجز', desc: 'اختر الوقت المناسب لطفلك.' },
+          en: { stepNum: '2', title: 'Book', desc: 'Choose the ideal schedule for your child.' },
+        },
+        {
+          id: '3',
+          icon: 'menu_book',
+          fr: { stepNum: '3', title: 'Apprendre', desc: 'Pratiquez avec nos jeux interactifs.' },
+          ar: { stepNum: '3', title: 'تعلم', desc: 'تدرب مع ألعابنا التفاعلية الممتعة.' },
+          en: { stepNum: '3', title: 'Learn', desc: 'Practice with our interactive games.' },
+        },
+        {
+          id: '4',
+          icon: 'record_voice_over',
+          fr: { stepNum: '4', title: 'Session Live', desc: 'Rencontrez nos tuteurs certifiés en direct.' },
+          ar: { stepNum: '4', title: 'حصة مباشرة', desc: 'التق بمدرسينا المعتمدين في جلسة مباشرة.' },
+          en: { stepNum: '4', title: 'Live Session', desc: 'Meet our certified teachers live.' },
+        },
+      ];
+
       return {
         fr: {
           title: existing.fr?.title || "Comment ça marche ?",
@@ -399,16 +471,44 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
           title: existing.en?.title || "How it works?",
           subtitle: existing.en?.subtitle || "A simple path to start learning.",
         },
+        steps: existing.steps || defaultSteps,
       };
     }
 
+
     if (sectionKey === 'testimonials') {
+      const defaultList = [
+        {
+          id: '1',
+          stars: 5,
+          fr: { quote: '"Mes enfants adorent ! Ils attendent leur session du mercredi avec impatience."', author: "- Sophie, Maman de Léo (7 ans)" },
+          ar: { quote: '"أطفالي يعشقون هذه المنصة! ينتظرون جلسة يوم الأربعاء بشغف وحماس كبير."', author: "- صوفي، والدة ليو (7 سنوات)" },
+          en: { quote: '"My children love it! They look forward to their Wednesday session with great enthusiasm."', author: "- Sophie, Leo's Mom (7 years old)" },
+        },
+        {
+          id: '2',
+          stars: 5,
+          fr: { quote: '"Une méthode vraiment ludique. L\'apprentissage de l\'arabe est devenu un jeu pour ma fille."', author: "- Karim, Papa de Lina (5 ans)" },
+          ar: { quote: '"أسلوب ممتع ومبتكر. أصبح تعلم اللغة العربية بمثابة لعبة مسلية لابنتي."', author: "- كريم، والد لينا (5 سنوات)" },
+          en: { quote: '"A truly fun methodology. Learning Arabic became a game for my daughter."', author: "- Karim, Lina's Dad (5 years old)" },
+        },
+        {
+          id: '3',
+          stars: 4,
+          fr: { quote: '"Les tuteurs sont très patients et la plateforme est super sécurisée. Je recommande !"', author: "- Marie, Maman de Thomas (9 ans)" },
+          ar: { quote: '"المعلمون صبورون ومتميزون جداً، والمنصة آمنة ومحمية للغاية. أوصي بها بشدة!"', author: "- ماري، والدة توماس (9 سنوات)" },
+          en: { quote: '"The tutors are very patient and the platform is super secure. Highly recommended!"', author: "- Marie, Thomas's Mom (9 years old)" },
+        },
+      ];
+
       return {
         fr: { title: existing.fr?.title || "Ce que disent les parents" },
         ar: { title: existing.ar?.title || "ما يقوله أولياء الأمور" },
         en: { title: existing.en?.title || "What parents say" },
+        list: existing.list || defaultList,
       };
     }
+
 
     return {
       fr: existing.fr || {},
@@ -522,7 +622,188 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
     }));
   };
 
+  // Available Days Handlers for calendarStep1
+  const handleDayChange = (index, langKey, value) => {
+    setFormData(prev => {
+      const updatedDays = [...(prev.availableDays || [])];
+      if (typeof updatedDays[index] === 'string') {
+        updatedDays[index] = {
+          id: String(index + 1),
+          fr: updatedDays[index],
+          ar: updatedDays[index],
+          en: updatedDays[index],
+          [langKey]: value,
+        };
+      } else {
+        updatedDays[index] = {
+          ...updatedDays[index],
+          [langKey]: value,
+        };
+      }
+      return { ...prev, availableDays: updatedDays };
+    });
+  };
+
+  const addDayItem = () => {
+    setFormData(prev => ({
+      ...prev,
+      availableDays: [
+        ...(prev.availableDays || []),
+        { id: String(Date.now()), fr: 'Nouveau jour', ar: 'يوم جديد', en: 'New day' },
+      ],
+    }));
+  };
+
+  const removeDayItem = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      availableDays: (prev.availableDays || []).filter((_, i) => i !== index),
+    }));
+  };
+
+  // Time Slots Handlers for calendarStep2
+  const handleTimeSlotChange = (index, langKey, value) => {
+    setFormData(prev => {
+      const updatedSlots = [...(prev.timeSlots || [])];
+      if (typeof updatedSlots[index] === 'string') {
+        updatedSlots[index] = {
+          id: String(index + 1),
+          fr: updatedSlots[index],
+          ar: updatedSlots[index],
+          en: updatedSlots[index],
+          [langKey]: value,
+        };
+      } else {
+        updatedSlots[index] = {
+          ...updatedSlots[index],
+          [langKey]: value,
+        };
+      }
+      return { ...prev, timeSlots: updatedSlots };
+    });
+  };
+
+  const addTimeSlotItem = () => {
+    setFormData(prev => ({
+      ...prev,
+      timeSlots: [
+        ...(prev.timeSlots || []),
+        { id: String(Date.now()), fr: '18:00', ar: '18:00', en: '18:00' },
+      ],
+    }));
+  };
+
+  const removeTimeSlotItem = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      timeSlots: (prev.timeSlots || []).filter((_, i) => i !== index),
+    }));
+  };
+
+  // Step Handlers for howItWorks
+  const handleStepChange = (index, langKey, field, value) => {
+    setFormData(prev => {
+      const updatedSteps = [...(prev.steps || [])];
+      updatedSteps[index] = {
+        ...updatedSteps[index],
+        [langKey]: {
+          ...updatedSteps[index]?.[langKey],
+          [field]: value,
+        },
+      };
+      return { ...prev, steps: updatedSteps };
+    });
+  };
+
+  const handleStepIconChange = (index, value) => {
+    setFormData(prev => {
+      const updatedSteps = [...(prev.steps || [])];
+      updatedSteps[index] = { ...updatedSteps[index], icon: value };
+      return { ...prev, steps: updatedSteps };
+    });
+  };
+
+  const addStepItem = () => {
+    setFormData(prev => {
+      const nextNum = String((prev.steps || []).length + 1);
+      return {
+        ...prev,
+        steps: [
+          ...(prev.steps || []),
+          {
+            id: String(Date.now()),
+            icon: 'star',
+            fr: { stepNum: nextNum, title: 'Nouvelle étape', desc: 'Description de cette étape.' },
+            ar: { stepNum: nextNum, title: 'خطوة جديدة', desc: 'وصف هذه الخطوة.' },
+            en: { stepNum: nextNum, title: 'New step', desc: 'Description of this step.' },
+          },
+        ],
+      };
+    });
+  };
+
+  const removeStepItem = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      steps: (prev.steps || []).filter((_, i) => i !== index),
+    }));
+  };
+
+  // Testimonials Handlers
+  const handleTestimonialChange = (index, langKey, field, value) => {
+    setFormData(prev => {
+      const updatedList = [...(prev.list || [])];
+      updatedList[index] = {
+        ...updatedList[index],
+        [langKey]: {
+          ...updatedList[index]?.[langKey],
+          [field]: value,
+        },
+      };
+      return { ...prev, list: updatedList };
+    });
+  };
+
+  const handleTestimonialStarsChange = (index, value) => {
+    setFormData(prev => {
+      const updatedList = [...(prev.list || [])];
+      updatedList[index] = {
+        ...updatedList[index],
+        stars: Number(value) || 5,
+      };
+      return { ...prev, list: updatedList };
+    });
+  };
+
+  const addTestimonialItem = () => {
+    setFormData(prev => {
+      const nextId = String(Date.now());
+      return {
+        ...prev,
+        list: [
+          ...(prev.list || []),
+          {
+            id: nextId,
+            stars: 5,
+            fr: { quote: '"Nouveau commentaire de parent."', author: "- Parent, Maman / Papa" },
+            ar: { quote: '"تعليق جديد من أحد الأولياء."', author: "- ولي أمر، أم / أب" },
+            en: { quote: '"New parent review."', author: "- Parent, Mom / Dad" },
+          },
+        ],
+      };
+    });
+  };
+
+  const removeTestimonialItem = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      list: (prev.list || []).filter((_, i) => i !== index),
+    }));
+  };
+
   const handleSave = async (e) => {
+
+
     e.preventDefault();
     setSaving(true);
     setSuccessMsg('');
@@ -729,8 +1010,73 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
                         className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
                       />
                     </div>
+
+                    {/* Welcome Banner Card Settings */}
+                    <div className="pt-3 border-t border-slate-200/80 space-y-3 bg-indigo-50/50 p-4 rounded-2xl border-2 border-indigo-100/80 shadow-inner">
+                      <div className="flex items-center gap-2 text-xs font-extrabold text-[#1c0576]">
+                        <span className="text-base">👨‍👩‍👧</span>
+                        <span>{activeTab === 'ar' ? 'بنر الترحيب وفضاء الولي (عند تسجيل الدخول):' : 'Bannière de bienvenue (Une fois connecté) :'}</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold text-slate-700 block">
+                            {activeTab === 'ar' ? 'عبارة الترحيب بالوالد:' : 'Message de bienvenue parent :'}
+                          </label>
+                          <input
+                            type="text"
+                            value={formData[activeTab]?.welcomePrefix || ''}
+                            onChange={(e) => handleChange(activeTab, 'welcomePrefix', e.target.value)}
+                            className="w-full h-9 px-3 rounded-xl border border-slate-300 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                            placeholder="Bienvenue, "
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold text-slate-700 block">
+                            {activeTab === 'ar' ? 'عبارة مساحة الطفل:' : 'Texte espace enfant :'}
+                          </label>
+                          <input
+                            type="text"
+                            value={formData[activeTab]?.childSpacePrefix || ''}
+                            onChange={(e) => handleChange(activeTab, 'childSpacePrefix', e.target.value)}
+                            className="w-full h-9 px-3 rounded-xl border border-slate-300 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                            placeholder="Espace de votre enfant: "
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold text-slate-700 block">
+                            {activeTab === 'ar' ? 'نص زر الانتقال (CTA):' : 'Texte du bouton Espace Parent :'}
+                          </label>
+                          <input
+                            type="text"
+                            value={formData[activeTab]?.welcomeBtn || ''}
+                            onChange={(e) => handleChange(activeTab, 'welcomeBtn', e.target.value)}
+                            className="w-full h-9 px-3 rounded-xl border border-slate-300 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                            placeholder="Espace Parent"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold text-slate-700 block">
+                            {activeTab === 'ar' ? 'الأيقونة التعبيرية (Emoji):' : 'Icône émoji :'}
+                          </label>
+                          <input
+                            type="text"
+                            value={formData[activeTab]?.welcomeEmoji || ''}
+                            onChange={(e) => handleChange(activeTab, 'welcomeEmoji', e.target.value)}
+                            className="w-full h-9 px-3 rounded-xl border border-slate-300 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                            placeholder="👨‍👩‍👧"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
+
 
                 {/* Sub-tab 2: Features List */}
                 {activeSubTab === 'features' && (
@@ -912,6 +1258,19 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
 
                     <div className="space-y-1">
                       <label className="text-xs font-bold text-slate-700">
+                        {activeTab === 'ar' ? 'نص زر تشغيل الفيديو (CTA):' : 'Texte du bouton vidéo (CTA) :'}
+                      </label>
+                      <input
+                        type="text"
+                        value={formData[activeTab]?.videoBtn || ''}
+                        onChange={(e) => handleChange(activeTab, 'videoBtn', e.target.value)}
+                        placeholder="Regarder maintenant"
+                        className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-700">
                         {activeTab === 'ar' ? 'رابط فيديو يوتيوب (URL):' : 'Lien vidéo YouTube :'}
                       </label>
                       <input
@@ -971,6 +1330,20 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
 
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-700">
+                    {activeTab === 'ar' ? 'نص زر تشغيل الفيديو (CTA):' : 'Texte du bouton vidéo (CTA) :'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData[activeTab]?.videoBtn || ''}
+                    onChange={(e) => handleChange(activeTab, 'videoBtn', e.target.value)}
+                    placeholder="Regarder maintenant"
+                    className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
                     {activeTab === 'ar' ? 'رابط فيديو يوتيوب (URL):' : 'Lien vidéo YouTube :'}
                   </label>
                   <input
@@ -984,6 +1357,7 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
                 </div>
               </>
             )}
+
 
             {/* Section 3: How It Works Form */}
             {sectionKey === 'howItWorks' && (
@@ -1013,24 +1387,203 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
                     className="w-full p-3 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-medium text-xs shadow-sm leading-relaxed"
                   />
                 </div>
+
+                {/* Step Cards Management */}
+                <div className="mt-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                      {activeTab === 'ar' ? '🃏 بطاقات الخطوات' : '🃏 Cartes des étapes'}
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={addStepItem}
+                      className="flex items-center gap-1.5 bg-[#4221b6] hover:bg-[#3318a0] text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all shadow"
+                    >
+                      <span className="material-symbols-outlined text-sm">add</span>
+                      {activeTab === 'ar' ? 'إضافة خطوة' : 'Ajouter une étape'}
+                    </button>
+                  </div>
+
+                  {(formData.steps || []).map((step, idx) => (
+                    <div key={step.id || idx} className="border-2 border-slate-200 rounded-xl p-4 space-y-3 bg-white shadow-sm">
+                      {/* Header: step number + delete */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-[#4221b6] uppercase tracking-wider">
+                          {activeTab === 'ar' ? `خطوة ${idx + 1}` : `Étape ${idx + 1}`}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeStepItem(idx)}
+                          className="text-red-500 hover:text-red-700 transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-sm">delete</span>
+                        </button>
+                      </div>
+
+                      {/* Icon field */}
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-slate-600">
+                          {activeTab === 'ar' ? 'أيقونة (Material Icon):' : 'Icône (Material Icon) :'}
+                        </label>
+                        <input
+                          type="text"
+                          value={step.icon || ''}
+                          onChange={(e) => handleStepIconChange(idx, e.target.value)}
+                          placeholder="star, menu_book, event_available..."
+                          className="w-full h-9 px-3 rounded-lg border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none text-xs font-mono shadow-sm"
+                        />
+                        {step.icon && (
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <span className="material-symbols-outlined text-[#4221b6] text-base">{step.icon}</span>
+                            <span className="text-[10px] text-slate-500">{step.icon}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Title */}
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-slate-600">
+                          {activeTab === 'ar' ? 'العنوان:' : 'Titre :'}
+                        </label>
+                        <input
+                          type="text"
+                          value={step[activeTab]?.title || ''}
+                          onChange={(e) => handleStepChange(idx, activeTab, 'title', e.target.value)}
+                          className="w-full h-9 px-3 rounded-lg border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none text-xs font-bold shadow-sm"
+                        />
+                      </div>
+
+                      {/* Description */}
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-slate-600">
+                          {activeTab === 'ar' ? 'الوصف:' : 'Description :'}
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={step[activeTab]?.desc || ''}
+                          onChange={(e) => handleStepChange(idx, activeTab, 'desc', e.target.value)}
+                          className="w-full p-2.5 rounded-lg border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none text-xs font-medium shadow-sm leading-relaxed"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </>
             )}
 
+
             {/* Section 4: Testimonials Form */}
             {sectionKey === 'testimonials' && (
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">
-                  {activeTab === 'ar' ? 'عنوان قسم آراء الأولياء:' : 'Titre du témoignage :'}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData[activeTab]?.title || ''}
-                  onChange={(e) => handleChange(activeTab, 'title', e.target.value)}
-                  className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
-                />
-              </div>
+              <>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    {activeTab === 'ar' ? 'عنوان قسم آراء الأولياء:' : 'Titre de la section :'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData[activeTab]?.title || ''}
+                    onChange={(e) => handleChange(activeTab, 'title', e.target.value)}
+                    className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                  />
+                </div>
+
+                {/* Testimonial Cards Management */}
+                <div className="mt-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+                      <span>💬</span>
+                      <span>{activeTab === 'ar' ? 'بطاقات آراء الأولياء والتعليقات' : 'Cartes des témoignages'}</span>
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={addTestimonialItem}
+                      className="flex items-center gap-1.5 bg-[#4221b6] hover:bg-[#3318a0] text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all shadow"
+                    >
+                      <span className="material-symbols-outlined text-sm">add</span>
+                      {activeTab === 'ar' ? 'إضافة تعليق' : 'Ajouter un avis'}
+                    </button>
+                  </div>
+
+                  {(formData.list || []).map((item, idx) => (
+                    <div key={item.id || idx} className="border-2 border-slate-200 rounded-xl p-4 space-y-3 bg-white shadow-sm">
+                      {/* Header: Item index + delete */}
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <span className="text-xs font-black text-[#4221b6] uppercase tracking-wider">
+                          {activeTab === 'ar' ? `رأي ${idx + 1}` : `Avis ${idx + 1}`}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeTestimonialItem(idx)}
+                          className="text-red-500 hover:text-red-700 transition-colors p-1 rounded hover:bg-red-50"
+                          title={activeTab === 'ar' ? 'حذف هذا الرأي' : 'Supprimer cet avis'}
+                        >
+                          <span className="material-symbols-outlined text-sm">delete</span>
+                        </button>
+                      </div>
+
+                      {/* Stars selection */}
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-slate-600">
+                          {activeTab === 'ar' ? 'التقييم (النجوم):' : 'Évaluation (Étoiles) :'}
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200">
+                            {[1, 2, 3, 4, 5].map((starVal) => (
+                              <button
+                                key={starVal}
+                                type="button"
+                                onClick={() => handleTestimonialStarsChange(idx, starVal)}
+                                className="cursor-pointer transition-transform hover:scale-125 focus:outline-none"
+                              >
+                                <span
+                                  className={`material-symbols-outlined text-lg ${
+                                    starVal <= (item.stars || 5) ? 'text-amber-500' : 'text-slate-300'
+                                  }`}
+                                  style={{ fontVariationSettings: "'FILL' 1" }}
+                                >
+                                  star
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                          <span className="text-xs font-bold text-amber-600">{item.stars || 5} / 5</span>
+                        </div>
+                      </div>
+
+                      {/* Quote */}
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-slate-600">
+                          {activeTab === 'ar' ? 'نص التعليق / الرأي:' : 'Citation / Commentaire :'}
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={item[activeTab]?.quote || ''}
+                          onChange={(e) => handleTestimonialChange(idx, activeTab, 'quote', e.target.value)}
+                          placeholder={activeTab === 'ar' ? 'اكتب رأي الولي هنا...' : 'Écrivez le commentaire du parent ici...'}
+                          className="w-full p-2.5 rounded-lg border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none text-xs font-medium shadow-sm leading-relaxed"
+                        />
+                      </div>
+
+                      {/* Author */}
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-slate-600">
+                          {activeTab === 'ar' ? 'صاحب التعليق (الاسم والصفة):' : 'Auteur (Nom et rôle) :'}
+                        </label>
+                        <input
+                          type="text"
+                          value={item[activeTab]?.author || ''}
+                          onChange={(e) => handleTestimonialChange(idx, activeTab, 'author', e.target.value)}
+                          placeholder={activeTab === 'ar' ? '- سارة، والدة كريم (6 سنوات)' : '- Sophie, Maman de Léo (7 ans)'}
+                          className="w-full h-9 px-3 rounded-lg border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none text-xs font-bold shadow-sm"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
+
 
             {/* Section 5: Next Session Form */}
             {sectionKey === 'nextSession' && (
@@ -1342,33 +1895,37 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
 
             {/* Calendar Step 1 Form */}
             {sectionKey === 'calendarStep1' && (
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">
-                  {activeTab === 'ar' ? 'عنوان الخطوة الأولى (اختيار اليوم):' : 'Titre Étape 1 (Jour) :'}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData[activeTab]?.step1Title || ''}
-                  onChange={(e) => handleChange(activeTab, 'step1Title', e.target.value)}
-                  className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
-                />
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    {activeTab === 'ar' ? 'عنوان الخطوة الأولى (اختيار اليوم):' : 'Titre Étape 1 (Jour) :'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData[activeTab]?.step1Title || ''}
+                    onChange={(e) => handleChange(activeTab, 'step1Title', e.target.value)}
+                    className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                  />
+                </div>
               </div>
             )}
 
             {/* Calendar Step 2 Form */}
             {sectionKey === 'calendarStep2' && (
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">
-                  {activeTab === 'ar' ? 'عنوان الخطوة الثانية (اختيار الوقت):' : 'Titre Étape 2 (Heure) :'}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData[activeTab]?.step2Title || ''}
-                  onChange={(e) => handleChange(activeTab, 'step2Title', e.target.value)}
-                  className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
-                />
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    {activeTab === 'ar' ? 'عنوان الخطوة الثانية (اختيار الوقت):' : 'Titre Étape 2 (Heure) :'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData[activeTab]?.step2Title || ''}
+                    onChange={(e) => handleChange(activeTab, 'step2Title', e.target.value)}
+                    className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                  />
+                </div>
               </div>
             )}
 

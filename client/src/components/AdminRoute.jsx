@@ -5,10 +5,20 @@ import { useAuth } from '../context/AuthContext';
 export default function AdminRoute({ children }) {
   const { user } = useAuth();
 
-  // Block access unless logged in AND user role is 'admin'
-  if (!user || user.role?.toLowerCase() !== 'admin') {
+  const hasAccess = (() => {
+    if (!user) return false;
+    if (user.isAdmin === true) return true;
+    const r = user.role || user.roles;
+    if (!r) return false;
+    const roleStr = Array.isArray(r) ? r.join(' ').toLowerCase() : String(r).toLowerCase();
+    return roleStr.includes('admin') || roleStr.includes('maitresse') || roleStr.includes('teacher') || roleStr.includes('maître');
+  })();
+
+  // Block access unless logged in AND user role includes 'admin' or 'maitresse'
+  if (!hasAccess) {
     return <Navigate to="/" replace />;
   }
 
   return children;
 }
+

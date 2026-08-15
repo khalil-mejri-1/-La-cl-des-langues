@@ -30,8 +30,23 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['user', 'admin'],
       default: 'user',
+    },
+    status: {
+      type: String,
+      default: 'Actif',
+    },
+    availableDays: {
+      type: Array,
+      default: () => ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'],
+    },
+    timeSlots: {
+      type: Array,
+      default: () => ['10:00', '14:00', '16:30'],
+    },
+    subject: {
+      type: String,
+      default: 'Français & Arabe',
     },
   },
   { timestamps: true }

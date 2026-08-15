@@ -42,11 +42,23 @@ const userSchema = new mongoose.Schema(
     },
     timeSlots: {
       type: Array,
-      default: () => ['10:00', '14:00', '16:30'],
+      default: [],
     },
     subject: {
       type: String,
       default: 'Français & Arabe',
+    },
+    blockedDates: {
+      type: Array,
+      default: [],
+    },
+    blockedSlots: {
+      type: Array,
+      default: [],
+    },
+    customDaySlots: {
+      type: Object,
+      default: {},
     },
   },
   { timestamps: true }

@@ -254,8 +254,26 @@ export default function Navbar() {
 
     setIsNotificationsOpen(false);
 
-    if (notif.link) {
-      navigate(notif.link);
+    // If already on /admin page, switch to 'session' tab via custom event
+    if (window.location.pathname === '/admin') {
+      window.dispatchEvent(new CustomEvent('admin_switch_tab', { detail: { tab: 'session' } }));
+    } else if (notif.link) {
+      // If link points to /admin, navigate there and request session tab
+      if (notif.link.startsWith('/admin')) {
+        navigate('/admin');
+        // Small delay to let AdminPage mount before dispatching
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('admin_switch_tab', { detail: { tab: 'session' } }));
+        }, 150);
+      } else {
+        navigate(notif.link);
+      }
+    } else {
+      // Default: go to admin session tab
+      navigate('/admin');
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('admin_switch_tab', { detail: { tab: 'session' } }));
+      }, 150);
     }
   };
 

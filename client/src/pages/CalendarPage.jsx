@@ -127,13 +127,15 @@ export default function CalendarPage() {
 
   const availableDays = effectiveDays.map(d => typeof d === 'object' ? (d[lang] || d.fr || d.ar || d.en || '') : d).filter(Boolean);
 
-  const effectiveTimes = effectiveTeacher?.timeSlots && effectiveTeacher.timeSlots.length > 0
+  // Only use teacher-defined slots - no fallback defaults shown to students
+  const effectiveTimes = effectiveTeacher?.timeSlots
     ? effectiveTeacher.timeSlots
-    : (user?.timeSlots && user.timeSlots.length > 0
-      ? user.timeSlots
-      : (customSections?.calendarStep2?.timeSlots || t.calendarPage?.timeSlots || defaultFallbackTimes));
+    : (user?.timeSlots || []);
 
   const timeSlots = effectiveTimes.map(s => typeof s === 'object' ? (s[lang] || s.fr || s.ar || s.en || '') : s).filter(Boolean);
+
+  // Day-specific custom slots for the teacher
+  const teacherCustomDaySlots = effectiveTeacher?.customDaySlots || {};
 
   // Current session being edited (starts completely blank)
   const currentSession = packSessions[activeSessionIndex] || {
@@ -172,13 +174,84 @@ export default function CalendarPage() {
     });
   };
 
-  // Helper: check if a time slot is already taken by another session for the current active day
-  const isTimeSlotTaken = (timeSlot) => {
-    const activeDay = currentSession.day;
-    const sessionThatTookIt = packSessions.find(
-      (s, idx) => idx !== activeSessionIndex && s.day === activeDay && s.time === timeSlot
+  // Modal & Date Picker state for session scheduling
+  const [modalSessionIndex, setModalSessionIndex] = useState(null); // null or session index 0,1,2,3
+  const [modalStep, setModalStep] = useState('date'); // 'date' | 'time'
+  const [tempSelectedDate, setTempSelectedDate] = useState(''); // 'YYYY-MM-DD'
+  const [currentCalMonth, setCurrentCalMonth] = useState(new Date());
+
+  // Blocked dates from target teacher / user
+  const teacherBlockedDates = effectiveTeacher?.blockedDates || user?.blockedDates || [];
+  const teacherBlockedSlots = effectiveTeacher?.blockedSlots || [];
+
+  // Helper to format date string YYYY-MM-DD
+  const formatDateStr = (dateObj) => {
+    const y = dateObj.getFullYear();
+    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const d = String(dateObj.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  // Helper to get formatted display name of day and date
+  const getFormattedDayLabel = (dateStr) => {
+    if (!dateStr) return '';
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dateObj = new Date(y, m - 1, d);
+    const dayNamesAr = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+    const monthNamesAr = ['يناير', 'فبراير', 'مارس', 'أبريل', 'ماي', 'يونيو', 'جوان', 'أوت', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+    const dayNamesFr = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+    const monthNamesFr = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+
+    if (lang === 'ar') {
+      return `${dayNamesAr[dateObj.getDay()]} ${d} ${monthNamesAr[dateObj.getMonth()]} ${y}`;
+    }
+    return `${dayNamesFr[dateObj.getDay()]} ${d} ${monthNamesFr[dateObj.getMonth()]} ${y}`;
+  };
+
+  // Open scheduling modal for specific session index
+  const openSessionModal = (index) => {
+    setActiveSessionIndex(index);
+    setModalSessionIndex(index);
+    setModalStep('date');
+    setTempSelectedDate(packSessions[index]?.day || '');
+  };
+
+  // Select Date from Calendar Grid inside Modal
+  const handleSelectModalDate = (dateStr) => {
+    if (teacherBlockedDates.includes(dateStr)) return; // Locked date, cannot pick
+    setTempSelectedDate(dateStr);
+    setModalStep('time');
+  };
+
+  // Select Time inside Modal and finalize for this session
+  const handleSelectModalTime = (timeSlot) => {
+    if (!modalSessionIndex && modalSessionIndex !== 0) return;
+    
+    // Check if slot taken on same date by another session in current pack
+    const isTakenByOther = packSessions.some(
+      (s, idx) => idx !== modalSessionIndex && s.day === tempSelectedDate && s.time === timeSlot
     );
-    return sessionThatTookIt ? sessionThatTookIt.id : null;
+    if (isTakenByOther) return;
+
+    setPackSessions(prev => {
+      const updated = [...prev];
+      updated[modalSessionIndex] = {
+        ...updated[modalSessionIndex],
+        day: tempSelectedDate,
+        time: timeSlot,
+      };
+      return updated;
+    });
+
+    // Close modal
+    setModalSessionIndex(null);
+  };
+
+  // Helper: check if a time slot is already taken on tempSelectedDate by another session
+  const isSlotTakenInModal = (timeSlot) => {
+    return packSessions.find(
+      (s, idx) => idx !== modalSessionIndex && s.day === tempSelectedDate && s.time === timeSlot
+    );
   };
 
   // Open schedule manager modal
@@ -221,7 +294,6 @@ export default function CalendarPage() {
           }
         }
       }
-      // Also update section settings for global fallback
       await updateSectionData('calendarStep1', { availableDays: schedDays });
     } catch (err) {
       console.error('Erreur sauvegarde des jours:', err);
@@ -251,7 +323,6 @@ export default function CalendarPage() {
           }
         }
       }
-      // Also update section settings for global fallback
       await updateSectionData('calendarStep2', { timeSlots: schedTimes });
     } catch (err) {
       console.error('Erreur sauvegarde des horaires:', err);
@@ -266,7 +337,7 @@ export default function CalendarPage() {
     // Validate that all 4 sessions have a day and a time
     const incompleteIdx = packSessions.findIndex(s => !s.day || !s.time);
     if (incompleteIdx !== -1) {
-      setActiveSessionIndex(incompleteIdx);
+      openSessionModal(incompleteIdx);
       return;
     }
 
@@ -292,14 +363,13 @@ export default function CalendarPage() {
       teacherEmail: teacherEmail,
       day: ps.day,
       time: ps.time,
-      datetime: `${ps.day}, ${ps.time}`,
+      datetime: `${getFormattedDayLabel(ps.day) || ps.day}, ${ps.time}`,
       subject: `${teacherSubject} (${lang === 'ar' ? `الحصة ${idx + 1} من 4` : `Séance ${idx + 1}/4`})`,
       paymentMethod: selectedPaymentMethod,
       packId: currentPackId,
     }));
 
     try {
-      // 1. Try batch creation endpoint
       const res = await fetch(`${API_BASE_URL}/api/sessions/batch`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -311,7 +381,6 @@ export default function CalendarPage() {
         const data = await res.json();
         savedSessions = data?.sessions || [];
       } else {
-        // Fallback: send individually
         for (const sPayload of sessionsPayload) {
           const singleRes = await fetch(`${API_BASE_URL}/api/sessions`, {
             method: 'POST',
@@ -335,7 +404,6 @@ export default function CalendarPage() {
         }));
       }
 
-      // Dispatch custom events and broadcasts
       savedSessions.forEach((savedSession) => {
         window.dispatchEvent(new CustomEvent('session_created', { detail: savedSession }));
       });
@@ -356,13 +424,11 @@ export default function CalendarPage() {
         }));
       } catch {}
 
-      // Cache locally
       try {
         const existing = JSON.parse(localStorage.getItem('admin_sessions_cache') || '[]');
         localStorage.setItem('admin_sessions_cache', JSON.stringify([...savedSessions, ...existing]));
       } catch {}
 
-      // ── Dispatch Real-time Notification for Admins & Teacher ───────────
       const studentDisplayName = user?.childName || user?.parentName || (user?.email ? user.email.split('@')[0] : 'Élève');
       createNotification({
         type: 'NEW_SESSION_REQUEST',
@@ -406,7 +472,6 @@ export default function CalendarPage() {
       
       {/* 1. Header Section */}
       <header className="text-center space-y-3 relative p-4 rounded-3xl">
-        {/* Admin Edit Button */}
         {isAdmin && (
           <button
             onClick={() => setEditingSectionModal({ key: 'calendarHeader', title: lang === 'ar' ? 'عنوان صفحة الحجز' : 'En-tête de réservation' })}
@@ -493,14 +558,11 @@ export default function CalendarPage() {
         </div>
       )}
 
-
-      {/* 2. Sleek & Professional Free Trial Offer Section */}
+      {/* 2. Free Trial Offer Section */}
       <section className="bg-gradient-to-br from-[#f5f3ff] via-[#ffffff] to-[#eef9f2] rounded-3xl p-6 sm:p-8 md:p-10 shadow-xl border-2 border-[#8c90f6]/40 relative overflow-hidden transition-all duration-300">
-        {/* Background Decorative Lighting Circles */}
         <div className="absolute -top-24 -right-24 w-72 h-72 bg-[#8c90f6]/15 rounded-full blur-3xl pointer-events-none"></div>
         <div className="absolute -bottom-24 -left-24 w-72 h-72 bg-[#78fd7d]/20 rounded-full blur-3xl pointer-events-none"></div>
 
-        {/* Top Header Bar for Section */}
         <div className="flex items-center justify-between gap-4 mb-6 relative z-10">
           <div className="flex flex-wrap items-center gap-2.5">
             <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-[#4221b6] text-white font-black text-xs shadow-sm uppercase tracking-wider">
@@ -513,7 +575,6 @@ export default function CalendarPage() {
             </span>
           </div>
 
-          {/* Admin Edit Button */}
           {isAdmin && (
             <button
               onClick={() => setEditingSectionModal({ key: 'calendarPack', title: lang === 'ar' ? 'قسم العرض التجريبي' : 'Offre Séance d\'essai' })}
@@ -525,25 +586,17 @@ export default function CalendarPage() {
           )}
         </div>
 
-        {/* Main Content Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
-          {/* Left Column: Offer Info & Features */}
           <div className="lg:col-span-7 space-y-5 text-left rtl:text-right">
             <h2 className="text-2xl sm:text-3xl md:text-4xl text-[#1c0576] font-black leading-tight tracking-tight">
               {t.calendarPage?.packOffer?.title}
             </h2>
-
             <p className="text-sm sm:text-base text-slate-600 font-medium leading-relaxed max-w-2xl">
               {t.calendarPage?.packOffer?.subtitle}
             </p>
-
-            {/* Feature Pills */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
               {t.calendarPage?.packOffer?.features?.map((feat, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-2.5 bg-white/90 backdrop-blur-md px-3.5 py-2.5 rounded-2xl border border-slate-200/90 shadow-sm hover:border-[#8c90f6] transition-colors"
-                >
+                <div key={i} className="flex items-center gap-2.5 bg-white/90 backdrop-blur-md px-3.5 py-2.5 rounded-2xl border border-slate-200/90 shadow-sm hover:border-[#8c90f6] transition-colors">
                   <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
                     <span className="material-symbols-outlined text-base font-bold">check</span>
                   </div>
@@ -553,14 +606,11 @@ export default function CalendarPage() {
             </div>
           </div>
 
-          {/* Right Column: Floating Action Card */}
           <div className="lg:col-span-5 flex justify-center lg:justify-end">
             <div className="w-full max-w-sm bg-white rounded-3xl p-6 sm:p-7 border-2 border-[#8c90f6]/50 shadow-2xl flex flex-col items-center text-center gap-4 relative overflow-hidden group hover:border-[#4221b6] transition-all">
-              {/* Gift Badge Icon */}
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#EEF2FF] to-[#E0D7FF] text-[#4221b6] flex items-center justify-center text-3xl shadow-inner border border-[#8c90f6]/30 group-hover:scale-110 transition-transform">
                 🎁
               </div>
-
               <div className="space-y-1">
                 <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">
                   {lang === 'fr' ? 'SÉANCE D\'ESSAI' : lang === 'ar' ? 'جلسة تجريبية' : 'TRIAL SESSION'}
@@ -573,7 +623,6 @@ export default function CalendarPage() {
                 </p>
               </div>
 
-              {/* Interactive CTA Toggle Button */}
               <button
                 type="button"
                 onClick={() => setIsPackSelected(!isPackSelected)}
@@ -598,312 +647,106 @@ export default function CalendarPage() {
         </div>
       </section>
 
-      {/* 3. 4-SESSIONS PACK SELECTOR BAR */}
-      <section className="bg-gradient-to-br from-[#ffffff] to-[#f5f3ff] rounded-3xl p-5 sm:p-7 border-2 border-[#8c90f6]/50 shadow-lg space-y-4 relative">
+      {/* 3. NEW 4-SESSIONS PACK INTERACTIVE CARDS */}
+      <section className="bg-gradient-to-br from-[#ffffff] to-[#f5f3ff] rounded-3xl p-6 sm:p-8 border-2 border-[#8c90f6]/50 shadow-xl space-y-6 relative">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#4221b6] text-white flex items-center justify-center font-black text-base shadow-md">
+            <div className="w-12 h-12 rounded-2xl bg-[#4221b6] text-white flex items-center justify-center font-black text-xl shadow-lg">
               4x
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-black text-[#1c0576]">
-                {lang === 'ar' ? 'حدد مواعيد باقة الـ 4 حصص :' : 'Planifiez vos 4 séances du pack :'}
+              <h2 className="text-lg sm:text-xl font-black text-[#1c0576]">
+                {lang === 'ar' ? 'حصص الباقة الـ 4 :' : 'Planifiez vos 4 séances du pack :'}
               </h2>
               <p className="text-xs text-slate-500 font-medium">
                 {lang === 'ar'
-                  ? 'انقر على كل حصة لاختيار يوم وساعة مختلفة لكل منها'
-                  : 'Cliquez sur chaque séance pour lui attribuer un jour et une heure uniques.'}
+                  ? 'انقر على أي حصة لفتح تقويم المواعيد واختيار اليوم والساعة المناسبة'
+                  : 'Cliquez sur n\'importe quelle séance pour ouvrir le calendrier et choisir la date et l\'heure.'}
               </p>
             </div>
           </div>
 
-          {/* Completion Badge */}
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-slate-500">
-              {lang === 'ar' ? 'التقدم :' : 'Progression :'}
+              {lang === 'ar' ? 'الحصص المكتملة :' : 'Progression :'}
             </span>
-            <span className="px-3 py-1 rounded-full text-xs font-black bg-[#e0d7ff] text-[#4221b6] border border-[#8c90f6]/40">
+            <span className="px-4 py-1.5 rounded-full text-xs font-black bg-[#e0d7ff] text-[#4221b6] border border-[#8c90f6]/40 shadow-sm">
               {packSessions.filter(s => s.day && s.time).length} / 4 {lang === 'ar' ? 'حصص' : 'séances'}
             </span>
           </div>
         </div>
 
-        {/* 4 Session Buttons (Cards) Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
+        {/* 4 Cards Grid - Clicking opens Modal */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {packSessions.map((sess, idx) => {
-            const isActive = activeSessionIndex === idx;
             const isConfigured = sess.day && sess.time;
 
             return (
-              <button
+              <div
                 key={sess.id}
-                type="button"
-                onClick={() => setActiveSessionIndex(idx)}
-                className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between gap-2.5 text-left rtl:text-right relative ${
-                  isActive
-                    ? 'border-[#4221b6] bg-[#4221b6] text-white shadow-xl scale-[1.03] ring-4 ring-[#8c90f6]/30'
-                    : isConfigured
-                      ? 'border-emerald-300 bg-emerald-50/70 hover:border-emerald-500 text-slate-800'
-                      : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'
+                onClick={() => openSessionModal(idx)}
+                className={`p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between gap-4 text-left rtl:text-right relative group hover:scale-[1.03] shadow-sm ${
+                  isConfigured
+                    ? 'border-emerald-400 bg-gradient-to-b from-emerald-50/80 to-white text-slate-800 shadow-md hover:border-emerald-600'
+                    : 'border-[#8c90f6]/40 bg-white hover:border-[#4221b6] text-slate-700 hover:shadow-xl'
                 }`}
               >
-                {/* Top: Session Number + Status Icon */}
                 <div className="flex items-center justify-between w-full">
-                  <span className={`text-xs font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
-                    isActive
-                      ? 'bg-white/20 text-white'
-                      : isConfigured
-                        ? 'bg-emerald-200 text-emerald-900 font-bold'
-                        : 'bg-slate-100 text-slate-600 font-bold'
+                  <span className={`text-xs font-black uppercase tracking-wider px-3 py-1 rounded-full ${
+                    isConfigured ? 'bg-emerald-200 text-emerald-900' : 'bg-[#e0d7ff] text-[#4221b6]'
                   }`}>
                     {lang === 'ar' ? `الحصة ${sess.id}` : `Séance ${sess.id}`}
                   </span>
 
                   {isConfigured ? (
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-black ${
-                      isActive ? 'bg-white text-[#4221b6]' : 'bg-emerald-500 text-white'
-                    }`}>
+                    <span className="w-7 h-7 rounded-full bg-emerald-500 text-white flex items-center justify-center text-sm font-black shadow-sm">
                       ✓
                     </span>
                   ) : (
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
-                      isActive ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-400 border border-slate-300'
-                    }`}>
+                    <span className="w-7 h-7 rounded-full bg-[#e0d7ff] text-[#4221b6] group-hover:bg-[#4221b6] group-hover:text-white flex items-center justify-center text-sm font-black transition-colors">
                       +
                     </span>
                   )}
                 </div>
 
-                {/* Bottom: Selected Day & Time Details */}
-                <div className="space-y-0.5 min-h-[36px] flex flex-col justify-center">
+                <div className="space-y-1.5 min-h-[50px] flex flex-col justify-center">
                   {isConfigured ? (
                     <>
-                      <span className={`text-xs font-black flex items-center gap-1 truncate ${isActive ? 'text-white' : 'text-slate-900'}`}>
-                        <span>📅 {sess.day}</span>
+                      <span className="text-xs sm:text-sm font-black text-slate-900 flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-emerald-600 text-base">calendar_month</span>
+                        <span>{getFormattedDayLabel(sess.day) || sess.day}</span>
                       </span>
-                      <span className={`text-[11px] font-bold flex items-center gap-1 ${isActive ? 'text-emerald-200' : 'text-[#4221b6]'}`}>
-                        <span>⏰ {sess.time}</span>
+                      <span className="text-xs font-extrabold text-[#4221b6] flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-base">schedule</span>
+                        <span>{sess.time}</span>
                       </span>
                     </>
                   ) : (
-                    <span className={`text-[11px] font-bold italic ${isActive ? 'text-white/80' : 'text-slate-400'}`}>
-                      {lang === 'ar' ? '👉 اضغط لتحديد الموعد' : '👉 Choisir l\'horaire'}
-                    </span>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs font-bold text-slate-500 group-hover:text-[#4221b6] transition-colors">
+                        {lang === 'ar' ? '👉 اضغط لاختيار موعد الحصة' : '👉 Cliquez pour choisir la date'}
+                      </span>
+                      <span className="text-[11px] text-slate-400">
+                        {lang === 'ar' ? 'تقويم تفاعلي' : 'Calendrier interactif'}
+                      </span>
+                    </div>
                   )}
                 </div>
-              </button>
+
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-500">
+                  <span>{isConfigured ? (lang === 'ar' ? 'تعديل الموعد' : 'Modifier') : (lang === 'ar' ? 'حدد الآن' : 'Planifier')}</span>
+                  <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">
+                    {isRtl ? 'arrow_back' : 'arrow_forward'}
+                  </span>
+                </div>
+              </div>
             );
           })}
         </div>
       </section>
 
-      {/* 4. Step 1: Select Day for Current Active Session */}
-      <section className="bg-surface-container-low rounded-2xl p-6 md:p-8 soft-card-shadow border border-[#D1E1EC] relative">
-        {/* Buttons top-right area */}
-        <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 flex items-center gap-2">
-          {/* Maîtresse: Manage Days Button */}
-          {isMaitresse && (
-            <button
-              onClick={() => openScheduleModal('days')}
-              className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-full font-black text-xs shadow-md hover:scale-105 transition-all cursor-pointer border-2 border-white/40"
-            >
-              <span className="material-symbols-outlined text-sm">calendar_month</span>
-              <span>{lang === 'ar' ? 'إدارة الأيام' : 'Gérer les jours'}</span>
-            </button>
-          )}
-          {/* Admin: Modifier Button */}
-          {isAdmin && (
-            <button
-              onClick={() => setEditingSectionModal({ key: 'calendarStep1', title: lang === 'ar' ? 'عنوان الخطوة الأولى' : 'Étape 1 : Choisir un jour' })}
-              className="flex items-center gap-1.5 bg-[#4221b6] text-white px-3 py-1.5 rounded-full font-black text-xs shadow-md hover:scale-105 transition-all cursor-pointer border-2 border-white/40"
-            >
-              <span className="material-symbols-outlined text-sm">edit</span>
-              <span>{lang === 'ar' ? 'تعديل' : 'Modifier'}</span>
-            </button>
-          )}
-        </div>
-
-        <div className="absolute -top-4 -left-4 w-10 h-10 bg-secondary-container text-on-secondary-container rounded-full flex items-center justify-center font-headline-md text-headline-md border-2 border-surface font-bold">
-          1
-        </div>
-
-        <div className="mb-6">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary">calendar_today</span>
-            <h2 className="text-headline-md font-headline-md text-on-surface">
-              {lang === 'ar'
-                ? `الخطوة 1 : اختر يوم الحصة رقم ${activeSessionIndex + 1}`
-                : `Étape 1 : Choisir le jour pour la Séance ${activeSessionIndex + 1}`}
-            </h2>
-          </div>
-          <p className="text-xs text-slate-500 font-medium mt-1">
-            {lang === 'ar'
-              ? `أنت الآن تضبط موعد [الحصة ${activeSessionIndex + 1} من 4]`
-              : `Vous configurez actuellement la [Séance ${activeSessionIndex + 1} sur 4]`}
-          </p>
-        </div>
-
-        {/* Available Day Buttons Side-by-Side */}
-        <div className="flex flex-wrap gap-3 sm:gap-4">
-          {availableDays.map((dayName, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => handleSelectDay(dayName)}
-              className={`flex-1 min-w-[120px] sm:min-w-[140px] h-[56px] px-4 rounded-2xl border-2 font-headline-md text-sm sm:text-base flex items-center justify-center gap-2 cursor-pointer transition-all ${
-                currentSession.day === dayName
-                  ? 'bg-[#4221b6] text-white border-[#4221b6] font-extrabold shadow-lg scale-105'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-[#4221b6] hover:text-[#4221b6] font-bold shadow-sm'
-              }`}
-            >
-              <span className="material-symbols-outlined text-lg">event</span>
-              <span>{dayName}</span>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* 5. Step 2: Select Time (With Duplicate Conflict Prevention) */}
-      <section className="bg-surface-container-low rounded-2xl p-6 md:p-8 soft-card-shadow border border-[#D5E5D6] relative">
-        {/* Buttons top-right area */}
-        <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 flex items-center gap-2">
-          {/* Maîtresse: Manage Times Button */}
-          {isMaitresse && (
-            <button
-              onClick={() => openScheduleModal('times')}
-              className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-full font-black text-xs shadow-md hover:scale-105 transition-all cursor-pointer border-2 border-white/40"
-            >
-              <span className="material-symbols-outlined text-sm">schedule</span>
-              <span>{lang === 'ar' ? 'إدارة الساعات' : 'Gérer les heures'}</span>
-            </button>
-          )}
-          {/* Admin: Modifier Button */}
-          {isAdmin && (
-            <button
-              onClick={() => setEditingSectionModal({ key: 'calendarStep2', title: lang === 'ar' ? 'عنوان الخطوة الثانية' : 'Étape 2 : Choisir l\'heure' })}
-              className="flex items-center gap-1.5 bg-[#4221b6] text-white px-3 py-1.5 rounded-full font-black text-xs shadow-md hover:scale-105 transition-all cursor-pointer border-2 border-white/40"
-            >
-              <span className="material-symbols-outlined text-sm">edit</span>
-              <span>{lang === 'ar' ? 'تعديل' : 'Modifier'}</span>
-            </button>
-          )}
-        </div>
-
-        <div className="absolute -top-4 -left-4 w-10 h-10 bg-secondary-container text-on-secondary-container rounded-full flex items-center justify-center font-headline-md text-headline-md border-2 border-surface font-bold">
-          2
-        </div>
-
-        <div className="mb-6">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-secondary">schedule</span>
-            <h2 className="text-headline-md font-headline-md text-on-surface">
-              {lang === 'ar'
-                ? `الخطوة 2 : اختر توقيت الحصة رقم ${activeSessionIndex + 1} (${currentSession.day || ''})`
-                : `Étape 2 : Choisir l'heure de la Séance ${activeSessionIndex + 1} (${currentSession.day || ''})`}
-            </h2>
-          </div>
-          <p className="text-xs text-slate-500 font-medium mt-1">
-            {lang === 'ar'
-              ? 'ملاحظة: الأوقات المحجوزة لحصة أخرى من باقتك تظهر مقفولة لمنع التكرار'
-              : 'Remarque : Les créneaux déjà choisis pour une autre séance du pack sont verrouillés.'}
-          </p>
-        </div>
-
-        {/* Available Time Slot Buttons Side-by-Side */}
-        {!currentSession.day ? (
-          <div className="p-6 rounded-2xl bg-amber-50 border-2 border-dashed border-amber-200 text-center flex flex-col items-center justify-center gap-2">
-            <span className="material-symbols-outlined text-2xl text-amber-600">touch_app</span>
-            <span className="text-xs font-bold text-amber-800">
-              {lang === 'ar'
-                ? `يرجى اختيار يوم الحصة رقم ${activeSessionIndex + 1} في الخطوة 1 أولاً 👆`
-                : `Veuillez d'abord choisir un jour pour la Séance ${activeSessionIndex + 1} à l'étape 1 ci-dessus 👆`}
-            </span>
-          </div>
-        ) : (
-          <div className="flex flex-wrap gap-3 sm:gap-4">
-            {timeSlots.map((slot, idx) => {
-              const isSelected = currentSession.time === slot;
-              const takenBySessionId = isTimeSlotTaken(slot);
-
-              if (takenBySessionId) {
-                return (
-                  <div
-                    key={idx}
-                    title={lang === 'ar' ? `محجوز للحصة ${takenBySessionId}` : `Déjà réservé pour la Séance ${takenBySessionId}`}
-                    className="flex-1 min-w-[120px] sm:min-w-[140px] h-[56px] px-4 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-100 text-slate-400 font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-not-allowed opacity-60 line-through"
-                  >
-                    <span className="material-symbols-outlined text-sm">lock</span>
-                    <span>{slot}</span>
-                    <span className="text-[10px] no-underline font-black bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded ml-1">
-                      {lang === 'ar' ? `حصة ${takenBySessionId}` : `S${takenBySessionId}`}
-                    </span>
-                  </div>
-                );
-              }
-
-              return (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => handleSelectTime(slot)}
-                  className={`flex-1 min-w-[110px] sm:min-w-[130px] h-[56px] px-4 rounded-2xl border-2 font-headline-md text-sm sm:text-base flex items-center justify-center gap-2 cursor-pointer transition-all ${
-                    isSelected
-                      ? 'bg-[#4221b6] text-white border-[#4221b6] font-extrabold shadow-lg scale-105'
-                      : 'border-slate-200 bg-white text-slate-700 hover:border-[#4221b6] hover:text-[#4221b6] font-bold shadow-sm'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-lg">schedule</span>
-                  <span>{slot}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Quick Nav to next session (Locked until day and time are selected) */}
-        {activeSessionIndex < 3 && (
-          <div className="mt-6 flex flex-col sm:flex-row items-center justify-end gap-3">
-            {(!currentSession.day || !currentSession.time) && (
-              <span className="text-xs font-bold text-amber-800 bg-amber-50 px-3.5 py-1.5 rounded-full border border-amber-200 flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-sm text-amber-600">lock</span>
-                <span>
-                  {lang === 'ar'
-                    ? `يرجى تحديد اليوم والساعة للحصة ${activeSessionIndex + 1} أولاً`
-                    : `Veuillez choisir le jour et l'heure de la séance ${activeSessionIndex + 1}`}
-                </span>
-              </span>
-            )}
-
-            <button
-              type="button"
-              disabled={!currentSession.day || !currentSession.time}
-              onClick={() => {
-                if (currentSession.day && currentSession.time) {
-                  setActiveSessionIndex(activeSessionIndex + 1);
-                }
-              }}
-              className={`px-6 py-2.5 rounded-full font-bold text-xs transition-all flex items-center gap-2 ${
-                currentSession.day && currentSession.time
-                  ? 'bg-[#4221b6] text-white hover:scale-105 cursor-pointer shadow-md hover:bg-[#351996]'
-                  : 'bg-slate-200 text-slate-400 border border-slate-300 cursor-not-allowed opacity-60 shadow-none'
-              }`}
-            >
-              <span>
-                {lang === 'ar'
-                  ? `الانتقال للحصة ${activeSessionIndex + 2}`
-                  : `Passer à la Séance ${activeSessionIndex + 2}`}
-              </span>
-              <span className="material-symbols-outlined text-sm">
-                {currentSession.day && currentSession.time ? 'arrow_forward' : 'lock'}
-              </span>
-            </button>
-          </div>
-        )}
-      </section>
-
-      {/* 6. Step 3: Payment Methods Section */}
+      {/* 4. Payment Method Section */}
       <section className="bg-surface-container-low rounded-2xl p-6 md:p-8 soft-card-shadow border border-[#C5CAE9] relative">
-        {/* Admin Edit Button */}
         {isAdmin && (
           <button
             onClick={() => setEditingSectionModal({ key: 'calendarStep3', title: lang === 'ar' ? 'عنوان وتأكيد الدفع' : 'Étape 3 : Paiement' })}
@@ -914,13 +757,10 @@ export default function CalendarPage() {
           </button>
         )}
 
-        <div className="absolute -top-4 -left-4 w-10 h-10 bg-secondary-container text-on-secondary-container rounded-full flex items-center justify-center font-headline-md text-headline-md border-2 border-surface font-bold">
-          3
-        </div>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6 pr-24 rtl:pr-0 rtl:pl-24">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6">
           <h2 className="text-headline-md font-headline-md text-on-surface flex items-center gap-2">
             <span className="material-symbols-outlined text-[#4221b6]">credit_card</span>
-            {t.calendarPage?.step3Title}
+            {t.calendarPage?.step3Title || (lang === 'ar' ? 'طريقة الدفع' : 'Mode de paiement')}
           </h2>
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E8F5E9] text-[#2E7D32] font-label-bold text-xs font-bold w-fit">
             <span className="material-symbols-outlined text-sm">lock</span>
@@ -981,66 +821,274 @@ export default function CalendarPage() {
             );
           })}
         </div>
-
-        <div className="mt-6 pt-5 border-t border-surface-variant/80 grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
-          <div className="flex items-center justify-center gap-2 text-xs text-on-surface-variant font-medium">
-            <span className="material-symbols-outlined text-[#059669] text-base">verified_user</span>
-            <span>{lang === 'fr' ? 'Garantie 100% Satisfait' : lang === 'ar' ? 'ضمان 100% رضا العملاء' : '100% Satisfaction Guaranteed'}</span>
-          </div>
-          <div className="flex items-center justify-center gap-2 text-xs text-on-surface-variant font-medium">
-            <span className="material-symbols-outlined text-[#4221b6] text-base">bolt</span>
-            <span>{lang === 'fr' ? 'Confirmation immédiate' : lang === 'ar' ? 'تأكيد فوري بعد الدفع' : 'Instant Confirmation'}</span>
-          </div>
-          <div className="flex items-center justify-center gap-2 text-xs text-on-surface-variant font-medium">
-            <span className="material-symbols-outlined text-[#d946ef] text-base">headset_mic</span>
-            <span>{lang === 'fr' ? 'Support client 7j/7' : lang === 'ar' ? 'دعم فني متاح 7 أيام' : '24/7 Support'}</span>
-          </div>
-        </div>
       </section>
 
-      {/* Confirmation CTA Section (Locked until all 4 sessions are scheduled) */}
+      {/* 5. CONFIRMATION BUTTON - SHOWN WHEN ALL 4 SESSIONS ARE SCHEDULED */}
       <section className="flex flex-col items-center justify-center mt-4">
         {packSessions.every(s => s.day && s.time) ? (
           <button
             onClick={handleConfirmReservation}
             disabled={bookingLoading}
-            className="bg-primary-container text-on-primary font-black text-headline-md px-12 py-4 h-[72px] w-full md:w-auto rounded-full chunky-shadow-primary transition-all flex items-center justify-center gap-3 cursor-pointer hover:scale-105 shadow-xl animate-pulse"
+            className="bg-[#4221b6] hover:bg-[#351996] text-white font-black text-headline-md px-12 py-4 h-[72px] w-full md:w-auto rounded-full transition-all flex items-center justify-center gap-3 cursor-pointer shadow-xl hover:scale-105 border-2 border-emerald-400 animate-bounce"
           >
             {bookingLoading ? (
               <>
-                <span>{lang === 'ar' ? 'جاري تأكيد الباقة (4 حصص)...' : 'Confirmation du pack (4 séances)...'}</span>
+                <span>{lang === 'ar' ? 'جاري إرسال الطلب للمعلمة...' : 'Envoi de la demande...'}</span>
                 <span className="material-symbols-outlined animate-spin">progress_activity</span>
               </>
             ) : (
               <>
-                <span>{lang === 'ar' ? 'تأكيد حجز الباقة (4 حصص) ✓' : 'Confirmer la réservation du pack (4 séances) ✓'}</span>
-                <span className="material-symbols-outlined text-2xl text-emerald-300">check_circle</span>
+                <span>{lang === 'ar' ? 'تأكيد حجز الباقة وإرسال الطلب للأستاذ ✓' : 'Confirmer et envoyer la demande ✓'}</span>
+                <span className="material-symbols-outlined text-2xl text-emerald-300">send</span>
               </>
             )}
           </button>
         ) : (
-          <button
-            disabled
-            className="bg-slate-100 border-2 border-slate-300 text-slate-400 font-extrabold text-sm sm:text-base px-8 sm:px-12 py-4 h-[68px] w-full md:w-auto rounded-full flex items-center justify-center gap-3 cursor-not-allowed shadow-none"
-          >
-            <span className="material-symbols-outlined text-xl text-slate-400">lock</span>
-            <span>
+          <div className="flex flex-col items-center gap-3 w-full max-w-md">
+            <button
+              disabled
+              className="bg-slate-100 border-2 border-slate-300 text-slate-400 font-extrabold text-sm sm:text-base px-8 py-4 h-[64px] w-full rounded-full flex items-center justify-center gap-3 cursor-not-allowed shadow-none"
+            >
+              <span className="material-symbols-outlined text-xl text-slate-400">lock</span>
+              <span>
+                {lang === 'ar'
+                  ? `يرجى تحديد تواريخ الحصص الأربع أولاً (${packSessions.filter(s => s.day && s.time).length} / 4)`
+                  : `Veuillez planifier les 4 séances (${packSessions.filter(s => s.day && s.time).length} / 4)`}
+              </span>
+            </button>
+            <p className="text-xs text-slate-500 font-medium text-center">
               {lang === 'ar'
-                ? `يرجى تحديد مواعيد الحصص الأربع أولاً (${packSessions.filter(s => s.day && s.time).length} / 4)`
-                : `Veuillez planifier les 4 séances pour confirmer (${packSessions.filter(s => s.day && s.time).length} / 4)`}
-            </span>
-          </button>
+                ? '🔒 ينفتح زر التأكيد وتأكيد الحجز فور الانتهاء من اختيار يوم وساعة لكل حصة.'
+                : '🔒 Le bouton de confirmation s\'activera après la sélection des 4 dates.'}
+            </p>
+          </div>
         )}
-        <p className="mt-4 text-on-surface-variant text-body-md font-body-md text-center">
-          {packSessions.every(s => s.day && s.time)
-            ? (lang === 'ar'
-                ? '✅ اكتمل تحديد مواعيد الـ 4 حصص! يمكنك الآن النقر على زر التأكيد أعلاه.'
-                : '✅ Les 4 séances sont prêtes ! Vous pouvez confirmer votre réservation.')
-            : (lang === 'ar'
-                ? '🔒 الزر مقفل حتى تنتهي من اختيار اليوم والساعة لكل حصة من الحصص الأربع.'
-                : '🔒 Le bouton est verrouillé jusqu\'à ce que vous ayez choisi l\'horaire pour chacune des 4 séances.')}
-        </p>
       </section>
+
+      {/* ========================================================================= */}
+      {/* 6. POPUP MODAL: CALENDAR & TIME SELECTOR FOR SINGLE SESSION */}
+      {/* ========================================================================= */}
+      {modalSessionIndex !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl p-6 sm:p-8 flex flex-col gap-6 relative border-2 border-[#8c90f6]/50 max-h-[90vh] overflow-y-auto">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#4221b6] text-white flex items-center justify-center font-black text-lg shadow-md">
+                  {modalSessionIndex + 1}
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-[#1c0576]">
+                    {lang === 'ar' ? `تحديد موعد الحصة رقم ${modalSessionIndex + 1}` : `Planifier la Séance ${modalSessionIndex + 1}`}
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    {modalStep === 'date'
+                      ? (lang === 'ar' ? 'الخطوة 1: اختر يوماً من تقويم الشهر' : 'Étape 1 : Choisissez une date du calendrier')
+                      : (lang === 'ar' ? `الخطوة 2: اختر الساعة ليوم (${getFormattedDayLabel(tempSelectedDate)})` : `Étape 2 : Choisissez l'heure (${tempSelectedDate})`)}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setModalSessionIndex(null)}
+                className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center hover:bg-red-100 text-slate-600 hover:text-red-600 transition cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+
+            {/* STEP 1: MONTH CALENDAR GRID */}
+            {modalStep === 'date' && (
+              <div className="space-y-5">
+                {/* Month Navigation */}
+                <div className="flex items-center justify-between bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const prev = new Date(currentCalMonth);
+                      prev.setMonth(prev.getMonth() - 1);
+                      setCurrentCalMonth(prev);
+                    }}
+                    className="p-2 rounded-xl bg-white hover:bg-slate-200 text-slate-700 shadow-sm transition cursor-pointer flex items-center justify-center"
+                  >
+                    <span className="material-symbols-outlined text-base">{isRtl ? 'chevron_right' : 'chevron_left'}</span>
+                  </button>
+
+                  <h4 className="text-base font-black text-[#1c0576]">
+                    {currentCalMonth.toLocaleDateString(lang === 'ar' ? 'ar-TN' : 'fr-FR', { month: 'long', year: 'numeric' })}
+                  </h4>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = new Date(currentCalMonth);
+                      next.setMonth(next.getMonth() + 1);
+                      setCurrentCalMonth(next);
+                    }}
+                    className="p-2 rounded-xl bg-white hover:bg-slate-200 text-slate-700 shadow-sm transition cursor-pointer flex items-center justify-center"
+                  >
+                    <span className="material-symbols-outlined text-base">{isRtl ? 'chevron_left' : 'chevron_right'}</span>
+                  </button>
+                </div>
+
+                {/* Calendar Days Header */}
+                <div className="grid grid-cols-7 text-center gap-1">
+                  {(lang === 'ar' ? ['أحد', 'إثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت'] : ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam']).map((d, idx) => (
+                    <span key={idx} className="text-xs font-black text-slate-400 py-1 uppercase tracking-wider">
+                      {d}
+                    </span>
+                  ))}
+                </div>
+
+                {/* Calendar Days Cells */}
+                <div className="grid grid-cols-7 gap-2">
+                  {(() => {
+                    const year = currentCalMonth.getFullYear();
+                    const month = currentCalMonth.getMonth();
+                    const firstDayOfMonth = new Date(year, month, 1).getDay();
+                    const daysInMonth = new Date(year, month + 1, 0).getDate();
+                    const cells = [];
+
+                    // Empty slots before month start
+                    for (let i = 0; i < firstDayOfMonth; i++) {
+                      cells.push(<div key={`empty-${i}`} className="h-11 rounded-xl bg-transparent"></div>);
+                    }
+
+                    // Month Days
+                    for (let dayNum = 1; dayNum <= daysInMonth; dayNum++) {
+                      const dateObj = new Date(year, month, dayNum);
+                      const dateStr = formatDateStr(dateObj);
+                      const isBlocked = teacherBlockedDates.includes(dateStr);
+                      const isSelected = tempSelectedDate === dateStr;
+                      const isToday = formatDateStr(new Date()) === dateStr;
+
+                      cells.push(
+                        <button
+                          key={dateStr}
+                          type="button"
+                          disabled={isBlocked}
+                          onClick={() => handleSelectModalDate(dateStr)}
+                          className={`h-12 rounded-2xl font-black text-xs sm:text-sm flex flex-col items-center justify-center transition-all relative cursor-pointer ${
+                            isBlocked
+                              ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60 line-through'
+                              : isSelected
+                                ? 'bg-[#4221b6] text-white shadow-lg scale-105 ring-4 ring-[#8c90f6]/30'
+                                : isToday
+                                  ? 'bg-emerald-50 text-emerald-800 border-2 border-emerald-400 font-extrabold'
+                                  : 'bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 hover:border-[#4221b6]'
+                          }`}
+                        >
+                          <span>{dayNum}</span>
+                          {isBlocked && (
+                            <span className="material-symbols-outlined text-[10px] text-red-500 absolute top-1 right-1">lock</span>
+                          )}
+                        </button>
+                      );
+                    }
+
+                    return cells;
+                  })()}
+                </div>
+
+                <div className="flex items-center justify-between text-xs font-bold pt-2 text-slate-500 border-t border-slate-100">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded-full bg-slate-200 border border-slate-300 inline-block"></span>
+                    <span>{lang === 'ar' ? 'أيام مقفولة من الأستاذ 🔒' : 'Jours bloqués 🔒'}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded-full bg-[#4221b6] inline-block"></span>
+                    <span>{lang === 'ar' ? 'اليوم المحدد' : 'Sélectionné'}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 2: TIME SELECTOR GRID */}
+            {modalStep === 'time' && (
+              <div className="space-y-5">
+                <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-emerald-900 font-bold text-xs sm:text-sm">
+                    <span className="material-symbols-outlined text-emerald-600">event_available</span>
+                    <span>{lang === 'ar' ? 'اليوم المختار :' : 'Date choisie :'} {getFormattedDayLabel(tempSelectedDate)}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setModalStep('date')}
+                    className="text-xs text-[#4221b6] font-black underline cursor-pointer"
+                  >
+                    {lang === 'ar' ? 'تغيير اليوم' : 'Changer de date'}
+                  </button>
+                </div>
+
+                <h4 className="text-sm font-black text-slate-800">
+                  {lang === 'ar' ? 'اختر الساعة المناسبة:' : 'Choisissez l\'horaire :'}
+                </h4>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {(() => {
+                    // Combine global shared slots + day-specific slots for this exact date
+                    const daySpecificSlots = teacherCustomDaySlots[tempSelectedDate] || [];
+                    const combinedSlots = Array.from(new Set([...timeSlots, ...daySpecificSlots]));
+
+                    if (combinedSlots.length === 0) {
+                      return (
+                        <div className="col-span-3 py-8 text-center">
+                          <div className="w-14 h-14 mx-auto rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                            <span className="material-symbols-outlined text-2xl text-slate-400">schedule_off</span>
+                          </div>
+                          <p className="text-sm font-bold text-slate-500">
+                            {lang === 'ar' ? 'لا يوجد توقيت متاح لهذا اليوم' : 'Aucun horaire disponible pour ce jour'}
+                          </p>
+                          <p className="text-xs text-slate-400 mt-1">
+                            {lang === 'ar' ? 'يرجى اختيار يوم آخر' : 'Veuillez choisir une autre date'}
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return combinedSlots.map((slot, idx) => {
+                      const isTaken = isSlotTakenInModal(slot);
+                      const slotKey = `${tempSelectedDate}_${slot}`;
+                      const isTeacherBlocked = teacherBlockedSlots.includes(slotKey);
+
+                      if (isTaken || isTeacherBlocked) {
+                        return (
+                          <div
+                            key={idx}
+                            className="p-4 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-100 text-slate-400 font-bold text-xs flex items-center justify-center gap-1.5 cursor-not-allowed opacity-60 line-through"
+                          >
+                            <span className="material-symbols-outlined text-xs text-red-500">lock</span>
+                            <span>{slot}</span>
+                            <span className="text-[10px] no-underline font-black bg-slate-200 text-slate-600 px-1 rounded">
+                              {isTeacherBlocked
+                                ? (lang === 'ar' ? 'مقفول 🔒' : 'Bloqué 🔒')
+                                : (lang === 'ar' ? `حصة ${isTaken.id}` : `S${isTaken.id}`)}
+                            </span>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => handleSelectModalTime(slot)}
+                          className="p-4 rounded-2xl border-2 border-slate-200 bg-white hover:border-[#4221b6] hover:bg-[#4221b6] hover:text-white font-extrabold text-sm sm:text-base flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm hover:scale-105 text-slate-800"
+                        >
+                          <span className="material-symbols-outlined text-base">schedule</span>
+                          <span>{slot}</span>
+                        </button>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Success Booking Modal Overlay */}
       {isSuccessOpen && (
@@ -1060,7 +1108,6 @@ export default function CalendarPage() {
                 : `Vos 4 séances ont été enregistrées avec succès auprès de ${targetTeacher?.name || targetTeacher?.parentName || 'votre maîtresse'} :`}
             </p>
 
-            {/* 4 Sessions List Preview */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left rtl:text-right pt-1">
               {packSessions.map((s, i) => (
                 <div key={i} className="p-3 bg-[#faf9f5] border border-slate-200 rounded-xl flex items-center gap-2.5">
@@ -1068,7 +1115,7 @@ export default function CalendarPage() {
                     {i + 1}
                   </span>
                   <div>
-                    <span className="text-xs font-black text-slate-900 block">{s.day}</span>
+                    <span className="text-xs font-black text-slate-900 block">{getFormattedDayLabel(s.day) || s.day}</span>
                     <span className="text-[11px] font-bold text-[#4221b6]">{s.time}</span>
                   </div>
                 </div>
@@ -1095,11 +1142,10 @@ export default function CalendarPage() {
         />
       )}
 
-      {/* ====== Maîtresse: Manage Days Modal ====== */}
+      {/* Schedule Modals for Maitresse fallback */}
       {scheduleModal === 'days' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 flex flex-col gap-5">
-            {/* Header */}
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
                 <span className="material-symbols-outlined text-emerald-600">calendar_month</span>
@@ -1109,8 +1155,6 @@ export default function CalendarPage() {
                 <span className="material-symbols-outlined text-slate-600 text-sm">close</span>
               </button>
             </div>
-
-            {/* Days List */}
             <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
               {schedDays.map((d, i) => (
                 <div key={i} className="flex items-center gap-2 bg-slate-50 rounded-xl px-3 py-2 border border-slate-200">
@@ -1131,7 +1175,6 @@ export default function CalendarPage() {
                       setSchedDays(updated);
                     }}
                     className="flex-1 text-sm font-bold text-slate-700 bg-transparent outline-none border-none"
-                    placeholder={lang === 'ar' ? 'اسم اليوم...' : 'Nom du jour...'}
                   />
                   <button
                     onClick={() => setSchedDays(schedDays.filter((_, j) => j !== i))}
@@ -1142,8 +1185,6 @@ export default function CalendarPage() {
                 </div>
               ))}
             </div>
-
-            {/* Add Day */}
             <button
               onClick={() => setSchedDays([...schedDays, { id: String(Date.now()), fr: '', ar: '', en: '' }])}
               className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border-2 border-dashed border-emerald-400 text-emerald-700 font-bold text-sm hover:bg-emerald-50 transition cursor-pointer"
@@ -1151,8 +1192,6 @@ export default function CalendarPage() {
               <span className="material-symbols-outlined text-sm">add</span>
               {lang === 'ar' ? 'إضافة يوم جديد' : 'Ajouter un jour'}
             </button>
-
-            {/* Save / Cancel */}
             <div className="flex gap-3">
               <button onClick={() => setScheduleModal(null)} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 transition cursor-pointer">
                 {lang === 'ar' ? 'إلغاء' : 'Annuler'}
@@ -1170,11 +1209,9 @@ export default function CalendarPage() {
         </div>
       )}
 
-      {/* ====== Maîtresse: Manage Times Modal ====== */}
       {scheduleModal === 'times' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 flex flex-col gap-5">
-            {/* Header */}
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
                 <span className="material-symbols-outlined text-emerald-600">schedule</span>
@@ -1184,8 +1221,6 @@ export default function CalendarPage() {
                 <span className="material-symbols-outlined text-slate-600 text-sm">close</span>
               </button>
             </div>
-
-            {/* Times List */}
             <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
               {schedTimes.map((s, i) => (
                 <div key={i} className="flex items-center gap-2 bg-slate-50 rounded-xl px-3 py-2 border border-slate-200">
@@ -1210,7 +1245,6 @@ export default function CalendarPage() {
                 </div>
               ))}
             </div>
-
             {/* Add Time */}
             <button
               onClick={() => setSchedTimes([...schedTimes, { id: String(Date.now()), fr: '09:00', ar: '09:00', en: '09:00' }])}

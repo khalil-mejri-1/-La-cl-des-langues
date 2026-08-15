@@ -12,10 +12,21 @@ const playNotificationChime = () => {};
 export default function AdminPage() {
   const { t, lang, isRtl } = useLanguage();
   const { user, loginUser, updateCurrentUser } = useAuth();
-  const [activeTab, setActiveTab] = useState('session'); // 'session' | 'client'
+  const [activeTab, setActiveTab] = useState('session'); // 'session' | 'client' | 'calendar'
   const [searchQuery, setSearchQuery] = useState('');
   const [editingSession, setEditingSession] = useState(null);
   const [sessionToDelete, setSessionToDelete] = useState(null);
+
+  // Calendar Lock & Month state for Teacher
+  const initialLoadDoneRef = useRef(false);
+  const [adminCalMonth, setAdminCalMonth] = useState(new Date());
+  const [blockedDates, setBlockedDates] = useState(user?.blockedDates || []);
+  const [blockedSlots, setBlockedSlots] = useState(user?.blockedSlots || []); // Format: ["YYYY-MM-DD_10:00", ...]
+  const [customDaySlots, setCustomDaySlots] = useState(user?.customDaySlots || {}); // Format: { "YYYY-MM-DD": ["11:00", "15:00"] }
+  const [selectedDayForSlots, setSelectedDayForSlots] = useState(null); // 'YYYY-MM-DD' modal for hour management
+  const [confirmLockMonthModal, setConfirmLockMonthModal] = useState(null); // { monthName, datesToBlock }
+  const [lockSaving, setLockSaving] = useState(false);
+  const [showGlobalTimeModal, setShowGlobalTimeModal] = useState(false);
 
   // Pagination State for Sessions
   const [sessionPage, setSessionPage] = useState(1);
@@ -49,6 +60,176 @@ export default function AdminPage() {
       setActiveTab('session');
     }
   }, [isOnlyMaitresse, activeTab]);
+
+  // Listen for notification click → switch to session tab
+  useEffect(() => {
+    const handleSwitchTab = (e) => {
+      const tab = e.detail?.tab;
+      if (tab) {
+        setActiveTab(tab);
+        // Scroll to top of page so the section is visible
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    };
+    window.addEventListener('admin_switch_tab', handleSwitchTab);
+    return () => window.removeEventListener('admin_switch_tab', handleSwitchTab);
+  }, []);
+
+  // Sync blocked dates & slots & customDaySlots from user context
+  useEffect(() => {
+    if (user?.blockedDates) setBlockedDates(user.blockedDates);
+    if (user?.blockedSlots) setBlockedSlots(user.blockedSlots);
+    if (user?.customDaySlots) setCustomDaySlots(user.customDaySlots);
+  }, [user]);
+
+  // Save all schedule options to DB & current user state
+  const saveFullScheduleToDB = async (payload) => {
+    setLockSaving(true);
+    const targetId = user?.id || user?._id;
+
+    const newBlockedDates = payload.blockedDates !== undefined ? payload.blockedDates : blockedDates;
+    const newBlockedSlots = payload.blockedSlots !== undefined ? payload.blockedSlots : blockedSlots;
+    const newCustomDaySlots = payload.customDaySlots !== undefined ? payload.customDaySlots : customDaySlots;
+    const newTimeSlots = payload.timeSlots !== undefined ? payload.timeSlots : (user?.timeSlots || []);
+
+    setBlockedDates(newBlockedDates);
+    setBlockedSlots(newBlockedSlots);
+    setCustomDaySlots(newCustomDaySlots);
+
+    if (targetId) {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/teachers/${targetId}/schedule`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            blockedDates: newBlockedDates,
+            blockedSlots: newBlockedSlots,
+            customDaySlots: newCustomDaySlots,
+            timeSlots: newTimeSlots,
+          }),
+        });
+        if (res.ok) {
+          updateCurrentUser?.({
+            blockedDates: newBlockedDates,
+            blockedSlots: newBlockedSlots,
+            customDaySlots: newCustomDaySlots,
+            timeSlots: newTimeSlots,
+          });
+        }
+      } catch (err) {
+        console.error('Erreur sauvegarde du planning:', err);
+      } finally {
+        setLockSaving(false);
+      }
+    } else {
+      setLockSaving(false);
+    }
+  };
+
+  // Save blocked dates Specifically
+  const saveBlockedDatesToDB = async (newBlockedDates, newBlockedSlots = blockedSlots) => {
+    saveFullScheduleToDB({ blockedDates: newBlockedDates, blockedSlots: newBlockedSlots });
+  };
+
+  // Save blocked slots specifically
+  const saveBlockedSlotsToDB = async (newBlockedSlots) => {
+    saveFullScheduleToDB({ blockedSlots: newBlockedSlots });
+  };
+
+  // Add Day-Specific Custom Time Slot (saved for THAT day only)
+  const handleAddDaySpecificTimeSlot = (dateStr, newTimeStr) => {
+    if (!dateStr || !newTimeStr) return;
+    const existingDaySlots = customDaySlots[dateStr] || [];
+    if (!existingDaySlots.includes(newTimeStr)) {
+      const updated = {
+        ...customDaySlots,
+        [dateStr]: [...existingDaySlots, newTimeStr],
+      };
+      saveFullScheduleToDB({ customDaySlots: updated });
+    }
+  };
+
+  // Delete Day-Specific Custom Time Slot
+  const handleDeleteDaySpecificTimeSlot = (dateStr, timeToDelete) => {
+    const existingDaySlots = customDaySlots[dateStr] || [];
+    const updatedDaySlots = existingDaySlots.filter(t => t !== timeToDelete);
+    const updated = {
+      ...customDaySlots,
+      [dateStr]: updatedDaySlots,
+    };
+    saveFullScheduleToDB({ customDaySlots: updated });
+  };
+
+  // Add Shared (Global) Time Slot for ALL Days
+  const handleAddGlobalTimeSlot = (newTimeStr) => {
+    if (!newTimeStr) return;
+    const currentSlots = user?.timeSlots || [];
+    if (!currentSlots.includes(newTimeStr)) {
+      const updated = [...currentSlots, newTimeStr];
+      saveFullScheduleToDB({ timeSlots: updated });
+    }
+  };
+
+  // Delete Shared (Global) Time Slot from ALL Days
+  const handleDeleteGlobalTimeSlot = (timeToDelete) => {
+    const currentSlots = user?.timeSlots || [];
+    const updated = currentSlots.filter(t => (typeof t === 'object' ? (t.fr || t.ar || t.en) : t) !== timeToDelete);
+    saveFullScheduleToDB({ timeSlots: updated });
+  };
+
+  // Toggle Single Hour Slot Lock/Unlock for Teacher (Format: "YYYY-MM-DD_10:00")
+  const handleToggleSingleSlotLock = (dateStr, slotTime) => {
+    const slotKey = `${dateStr}_${slotTime}`;
+    const isCurrentlyBlocked = blockedSlots.includes(slotKey);
+    let updated;
+    if (isCurrentlyBlocked) {
+      updated = blockedSlots.filter(s => s !== slotKey);
+    } else {
+      updated = [...blockedSlots, slotKey];
+    }
+    saveBlockedSlotsToDB(updated);
+  };
+
+  // Toggle Single Day Lock/Unlock for Teacher
+  const handleToggleSingleDayLock = (dateStr) => {
+    const isCurrentlyBlocked = blockedDates.includes(dateStr);
+    let updated;
+    if (isCurrentlyBlocked) {
+      // Unlock day
+      updated = blockedDates.filter(d => d !== dateStr);
+    } else {
+      // Lock day
+      updated = [...blockedDates, dateStr];
+    }
+    saveBlockedDatesToDB(updated);
+  };
+
+  // Lock All Days of Current Month Action (with confirmation modal)
+  const requestLockEntireMonth = () => {
+    const year = adminCalMonth.getFullYear();
+    const month = adminCalMonth.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const monthDates = [];
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateObj = new Date(year, month, d);
+      const y = dateObj.getFullYear();
+      const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const day = String(dateObj.getDate()).padStart(2, '0');
+      monthDates.push(`${y}-${m}-${day}`);
+    }
+
+    const monthName = adminCalMonth.toLocaleDateString(lang === 'ar' ? 'ar-TN' : 'fr-FR', { month: 'long', year: 'numeric' });
+    setConfirmLockMonthModal({ monthName, datesToBlock: monthDates });
+  };
+
+  // Confirm Lock Entire Month
+  const confirmLockEntireMonth = () => {
+    if (!confirmLockMonthModal) return;
+    const combined = Array.from(new Set([...blockedDates, ...confirmLockMonthModal.datesToBlock]));
+    saveBlockedDatesToDB(combined);
+    setConfirmLockMonthModal(null);
+  };
 
   // Reset page to 1 on search or tab change
   useEffect(() => {
@@ -818,13 +999,210 @@ export default function AdminPage() {
                   {isRtl ? 'chevron_left' : 'chevron_right'}
                 </span>
               </button>
+
+              {/* Calendrier / Planning Button */}
+              <button
+                onClick={() => setActiveTab('calendar')}
+                class={`w-full p-3.5 rounded-2xl font-bold text-sm transition-all duration-200 cursor-pointer flex items-center justify-between group ${activeTab === 'calendar'
+                  ? 'bg-[#4221b6] text-white shadow-md scale-[1.02]'
+                  : 'bg-surface-container-low text-on-surface hover:bg-surface-container-high hover:text-[#4221b6] border border-surface-variant/80'
+                  }`}
+              >
+                <div class="flex items-center gap-3">
+                  <span class={`material-symbols-outlined text-xl ${activeTab === 'calendar' ? 'text-[#b0fdb5]' : 'text-[#4221b6]'}`}>
+                    calendar_month
+                  </span>
+                  <span>{lang === 'ar' ? 'تقويم الأستاذ والقفل' : 'Calendrier & Blocage'}</span>
+                </div>
+                <span class="material-symbols-outlined text-sm opacity-60 group-hover:translate-x-1 transition-transform">
+                  {isRtl ? 'chevron_left' : 'chevron_right'}
+                </span>
+              </button>
             </div>
           </div>
         </div>
 
         {/* Right/Main Column: Active Section View */}
         <div class="lg:col-span-9 w-full order-2 lg:order-2 flex flex-col gap-4">
-          {activeTab === 'session' ? (
+          {activeTab === 'calendar' ? (
+            /* Teacher Calendar Lock View */
+            <div className="bg-surface-container-lowest rounded-3xl p-6 md:p-8 soft-card-shadow border-2 border-surface-variant space-y-6">
+              
+              {/* Header & Lock Month Button */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+                <div>
+                  <h2 className="text-xl font-extrabold text-[#1c0576] flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[#4221b6]">edit_calendar</span>
+                    <span>{lang === 'ar' ? 'إدارة تقويم الأستاذ وقفل الأيام' : 'Gestion du Calendrier & Blocage'}</span>
+                  </h2>
+                  <p className="text-xs text-slate-500 font-medium mt-1">
+                    {lang === 'ar'
+                      ? 'اضغط على أي يوم لقفله أو قفل ساعات محددة، أو أضف توقيتاً مشتركاً لجميع الأيام.'
+                      : 'Cliquez sur un jour pour gérer ses horaires ou bloquer, ou ajoutez un créneau commun pour tous les jours.'}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                  <button
+                    type="button"
+                    onClick={() => setShowGlobalTimeModal(true)}
+                    className="px-4 py-3 rounded-2xl bg-[#4221b6] hover:bg-[#351996] text-white font-black text-xs sm:text-sm shadow-md transition hover:scale-105 flex items-center gap-2 cursor-pointer border-2 border-[#8c90f6]/50"
+                  >
+                    <span className="material-symbols-outlined text-base">more_time</span>
+                    <span>{lang === 'ar' ? 'توقيت مشترك لجميع الأيام 🌐' : 'Horaire commun tous jours 🌐'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={requestLockEntireMonth}
+                    disabled={lockSaving}
+                    className="px-4 py-3 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black text-xs sm:text-sm shadow-md transition hover:scale-105 flex items-center gap-2 cursor-pointer shrink-0 border-2 border-red-300"
+                  >
+                    <span className="material-symbols-outlined text-base">lock_clock</span>
+                    <span>{lang === 'ar' ? 'قفل كامل الشهر' : 'Bloquer le mois'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Month Navigation */}
+              <div className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const prev = new Date(adminCalMonth);
+                    prev.setMonth(prev.getMonth() - 1);
+                    setAdminCalMonth(prev);
+                  }}
+                  className="p-2.5 rounded-xl bg-white hover:bg-slate-200 text-slate-700 shadow-sm transition cursor-pointer flex items-center justify-center"
+                >
+                  <span className="material-symbols-outlined text-lg">{isRtl ? 'chevron_right' : 'chevron_left'}</span>
+                </button>
+
+                <h3 className="text-lg font-black text-[#1c0576] capitalize">
+                  {adminCalMonth.toLocaleDateString(lang === 'ar' ? 'ar-TN' : 'fr-FR', { month: 'long', year: 'numeric' })}
+                </h3>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = new Date(adminCalMonth);
+                    next.setMonth(next.getMonth() + 1);
+                    setAdminCalMonth(next);
+                  }}
+                  className="p-2.5 rounded-xl bg-white hover:bg-slate-200 text-slate-700 shadow-sm transition cursor-pointer flex items-center justify-center"
+                >
+                  <span className="material-symbols-outlined text-lg">{isRtl ? 'chevron_left' : 'chevron_right'}</span>
+                </button>
+              </div>
+
+              {/* Calendar Days Header */}
+              <div className="grid grid-cols-7 text-center gap-2">
+                {(lang === 'ar' ? ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'] : ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam']).map((d, idx) => (
+                  <span key={idx} className="text-xs font-black text-slate-400 py-1 uppercase tracking-wider">
+                    {d}
+                  </span>
+                ))}
+              </div>
+
+              {/* Calendar Grid Cells */}
+              <div className="grid grid-cols-7 gap-2 sm:gap-3">
+                {(() => {
+                  const year = adminCalMonth.getFullYear();
+                  const month = adminCalMonth.getMonth();
+                  const firstDayOfMonth = new Date(year, month, 1).getDay();
+                  const daysInMonth = new Date(year, month + 1, 0).getDate();
+                  const cells = [];
+
+                  // Empty slots before start
+                  for (let i = 0; i < firstDayOfMonth; i++) {
+                    cells.push(<div key={`empty-${i}`} className="h-14 sm:h-16 rounded-2xl bg-transparent"></div>);
+                  }
+
+                  // Days Cells
+                  for (let dayNum = 1; dayNum <= daysInMonth; dayNum++) {
+                    const dateObj = new Date(year, month, dayNum);
+                    const y = dateObj.getFullYear();
+                    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+                    const day = String(dateObj.getDate()).padStart(2, '0');
+                    const dateStr = `${y}-${m}-${day}`;
+                    const isBlocked = blockedDates.includes(dateStr);
+                    const isToday = new Date().toISOString().split('T')[0] === dateStr;
+                    // Count how many hour slots are blocked for this specific day
+                    const blockedSlotsForDay = blockedSlots.filter(s => s.startsWith(`${dateStr}_`)).length;
+
+                    cells.push(
+                      <div
+                        key={dateStr}
+                        className={`h-20 sm:h-24 rounded-2xl p-1.5 border-2 transition-all flex flex-col justify-between relative group shadow-sm ${
+                          isBlocked
+                            ? 'bg-slate-200 text-slate-600 border-slate-300 shadow-inner'
+                            : isToday
+                              ? 'bg-emerald-50/80 text-emerald-900 border-emerald-500 font-black'
+                              : 'bg-white text-slate-800 border-slate-200 hover:border-[#4221b6]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span className="font-black text-xs sm:text-sm px-1.5 py-0.5 rounded-lg bg-slate-100">{dayNum}</span>
+                          <button
+                            type="button"
+                            title={isBlocked ? (lang === 'ar' ? 'فتح اليوم بالكامل' : 'Débloquer jour') : (lang === 'ar' ? 'قفل اليوم بالكامل' : 'Bloquer jour')}
+                            onClick={() => handleToggleSingleDayLock(dateStr)}
+                            className={`w-6 h-6 rounded-lg flex items-center justify-center cursor-pointer transition ${
+                              isBlocked ? 'bg-red-500 text-white' : 'bg-slate-100 hover:bg-red-100 text-slate-500 hover:text-red-600'
+                            }`}
+                          >
+                            <span className="material-symbols-outlined text-[13px]">{isBlocked ? 'lock' : 'lock_open'}</span>
+                          </button>
+                        </div>
+
+                        {/* Slot hours trigger */}
+                        {!isBlocked && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedDayForSlots(dateStr)}
+                            className="w-full py-1 px-1.5 rounded-xl bg-[#4221b6]/10 hover:bg-[#4221b6] text-[#4221b6] hover:text-white font-extrabold text-[10px] sm:text-xs flex items-center justify-center gap-1 transition cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-[12px]">schedule</span>
+                            <span>
+                              {blockedSlotsForDay > 0
+                                ? (lang === 'ar' ? `ساعات 🔒 (${blockedSlotsForDay})` : `Heures 🔒 (${blockedSlotsForDay})`)
+                                : (lang === 'ar' ? 'تحديد الساعات' : 'Gérer heures')}
+                            </span>
+                          </button>
+                        )}
+
+                        {isBlocked && (
+                          <span className="text-[10px] font-extrabold text-red-600 text-center block">
+                            {lang === 'ar' ? 'يوم مقفول 🔒' : 'Jour bloqué 🔒'}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  return cells;
+                })()}
+              </div>
+
+              {/* Status Legend & Info */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-100 text-xs font-bold text-slate-600">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <span className="w-4 h-4 rounded-lg bg-emerald-100 border-2 border-emerald-400 inline-block"></span>
+                    <span>{lang === 'ar' ? 'يوم مفتوح للحجز' : 'Jour disponible'}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-4 h-4 rounded-lg bg-slate-200 border-2 border-slate-300 inline-block"></span>
+                    <span>{lang === 'ar' ? 'يوم مقفول (رمادي) 🔒' : 'Jour bloqué 🔒'}</span>
+                  </div>
+                </div>
+
+                <span className="text-[11px] text-slate-400">
+                  {lang === 'ar' ? 'يتم حفظ التغييرات تلقائياً وتطبيقها على تقويم الطالب فوراً.' : 'Changements enregistrés et appliqués en temps réel.'}
+                </span>
+              </div>
+            </div>
+          ) : activeTab === 'session' ? (
             /* Gestion de Session View */
             <div class="bg-surface-container-lowest rounded-2xl soft-card-shadow border border-surface-variant overflow-hidden">
               
@@ -1634,6 +2012,311 @@ export default function AdminPage() {
                 <span className="material-symbols-outlined text-sm">delete_forever</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Lock Entire Month Confirmation Modal */}
+      {confirmLockMonthModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full relative soft-card-shadow flex flex-col items-center text-center gap-5 border-2 border-red-400 animate-in fade-in zoom-in duration-200">
+            <div className="w-16 h-16 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center shadow-inner">
+              <span className="material-symbols-outlined text-3xl">lock_clock</span>
+            </div>
+
+            <div className="space-y-1">
+              <h3 className="text-xl font-black text-slate-800">
+                {lang === 'ar' ? 'تأكيد قفل كامل الشهر' : 'Confirmer le blocage du mois'}
+              </h3>
+              <p className="text-sm font-bold text-red-600">
+                {confirmLockMonthModal.monthName}
+              </p>
+            </div>
+
+            <p className="text-xs text-slate-600 font-medium leading-relaxed bg-slate-50 p-4 rounded-2xl border border-slate-200">
+              {lang === 'ar'
+                ? `هل أنت متأكد من قفل جميع أيام شهر (${confirmLockMonthModal.monthName})؟ ستظهر جميع أيام الشهر باللون الرمادي ومقفولة كلياً للتلاميذ.`
+                : `Êtes-vous sûr de vouloir bloquer tous les jours du mois de (${confirmLockMonthModal.monthName}) ? Tous les jours apparaîtront en gris et seront verrouillés pour les élèves.`}
+            </p>
+
+            <div className="flex items-center gap-3 w-full pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmLockMonthModal(null)}
+                disabled={lockSaving}
+                className="flex-1 py-3 rounded-full border border-slate-300 bg-white text-slate-700 font-bold text-xs hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                {lang === 'ar' ? 'إلغاء' : 'Annuler'}
+              </button>
+              <button
+                type="button"
+                onClick={confirmLockEntireMonth}
+                disabled={lockSaving}
+                className="flex-1 py-3 rounded-full bg-red-600 hover:bg-red-700 text-white font-black text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
+              >
+                {lockSaving ? (
+                  <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+                ) : (
+                  <span className="material-symbols-outlined text-sm">lock</span>
+                )}
+                <span>{lang === 'ar' ? 'نعم، اقفل الشهر' : 'Oui, bloquer le mois'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Lock Specific Hours / Slots Modal for Selected Day */}
+      {selectedDayForSlots && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full relative soft-card-shadow flex flex-col gap-6 border-2 border-[#8c90f6]/50 animate-in fade-in zoom-in duration-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#4221b6] text-white flex items-center justify-center font-black text-lg shadow-md">
+                  <span className="material-symbols-outlined text-xl">schedule</span>
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-[#1c0576]">
+                    {lang === 'ar' ? 'تحديد الساعات المتاحة والمقفولة' : 'Gérer les créneaux horaires'}
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    {lang === 'ar' ? `ليوم : ${selectedDayForSlots}` : `Pour le : ${selectedDayForSlots}`}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedDayForSlots(null)}
+                className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center hover:bg-red-100 text-slate-600 hover:text-red-600 transition cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 font-medium">
+              {lang === 'ar'
+                ? 'انقر على أية ساعة لقفلها (ستظهر باللون الرمادي والرمز 🔒 للتلاميذ) أو إعادة فتحها (الأخضر ✓):'
+                : 'Cliquez sur un créneau pour le bloquer (gris 🔒) ou le rendre disponible (vert ✓) :'}
+            </p>
+
+            {/* Slots List for THIS selected day (Combines Global TimeSlots + Day-Specific Slots) */}
+            <div className="flex flex-col gap-2 max-h-60 overflow-y-auto">
+              {(() => {
+                const globalSlots = user?.timeSlots || ['10:00', '14:00', '16:30'];
+                const daySpecificSlots = customDaySlots[selectedDayForSlots] || [];
+                // Combine and deduplicate
+                const allSlotsForDay = Array.from(new Set([...globalSlots, ...daySpecificSlots]));
+
+                if (allSlotsForDay.length === 0) {
+                  return (
+                    <div className="text-center py-4 text-xs font-bold text-slate-400 bg-slate-50 rounded-2xl border border-slate-200">
+                      {lang === 'ar' ? 'لا يوجد تواقيت حالية لهذا اليوم. أضف توقيتاً جديداً أدناه 👇' : 'Aucun horaire enregistrée.'}
+                    </div>
+                  );
+                }
+
+                return allSlotsForDay.map((slotObj, idx) => {
+                  const slotTime = typeof slotObj === 'object' ? (slotObj[lang] || slotObj.fr || slotObj.ar || '') : slotObj;
+                  const slotKey = `${selectedDayForSlots}_${slotTime}`;
+                  const isSlotBlocked = blockedSlots.includes(slotKey);
+                  const isDaySpecific = daySpecificSlots.includes(slotTime);
+
+                  return (
+                    <div
+                      key={idx}
+                      className={`p-3 rounded-2xl border-2 flex items-center justify-between transition-all shadow-sm ${
+                        isSlotBlocked
+                          ? 'bg-slate-100 text-slate-500 border-slate-300'
+                          : isDaySpecific
+                            ? 'bg-purple-50 text-purple-950 border-purple-300'
+                            : 'bg-emerald-50 text-emerald-950 border-emerald-300'
+                      }`}
+                    >
+                      {/* Time Clickable Toggle */}
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSingleSlotLock(selectedDayForSlots, slotTime)}
+                        className="flex items-center gap-2 font-black text-sm cursor-pointer hover:opacity-80 flex-1 text-left rtl:text-right"
+                      >
+                        <span className="material-symbols-outlined text-base">{isSlotBlocked ? 'lock' : 'schedule'}</span>
+                        <span>{slotTime}</span>
+                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-current">
+                          {isSlotBlocked
+                            ? (lang === 'ar' ? 'مقفول 🔒' : 'Bloqué 🔒')
+                            : isDaySpecific
+                              ? (lang === 'ar' ? 'خاص باليوم ⭐' : 'Spécifique ⭐')
+                              : (lang === 'ar' ? 'مشترك ✓' : 'Partagé ✓')}
+                        </span>
+                      </button>
+
+                      {/* Actions: Delete time slot */}
+                      <div className="flex items-center gap-1">
+                        {isDaySpecific ? (
+                          <button
+                            type="button"
+                            title={lang === 'ar' ? 'حذف هذا التوقيت الخاص بهذا اليوم' : 'Supprimer cet horaire du jour'}
+                            onClick={() => handleDeleteDaySpecificTimeSlot(selectedDayForSlots, slotTime)}
+                            className="w-8 h-8 rounded-xl bg-red-100 text-red-600 hover:bg-red-600 hover:text-white flex items-center justify-center transition cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-sm">delete</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            title={lang === 'ar' ? 'حذف من جميع الأيام' : 'Supprimer de tous les jours'}
+                            onClick={() => handleDeleteGlobalTimeSlot(slotTime)}
+                            className="w-8 h-8 rounded-xl bg-slate-100 text-slate-500 hover:bg-red-600 hover:text-white flex items-center justify-center transition cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-sm">delete</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+
+            {/* Form: Add New Time Slot Specifically for THIS Day */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const inputEl = e.target.elements.newDaySlotInput;
+                if (inputEl && inputEl.value) {
+                  handleAddDaySpecificTimeSlot(selectedDayForSlots, inputEl.value);
+                  inputEl.value = '';
+                }
+              }}
+              className="flex items-center gap-2 pt-2 border-t border-slate-100"
+            >
+              <input
+                name="newDaySlotInput"
+                type="time"
+                required
+                className="flex-1 px-4 py-2.5 rounded-xl border-2 border-slate-200 text-sm font-black text-slate-800 outline-none focus:border-[#4221b6] transition"
+              />
+              <button
+                type="submit"
+                disabled={lockSaving}
+                className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs flex items-center gap-1.5 transition cursor-pointer shadow-md"
+              >
+                <span className="material-symbols-outlined text-sm">add_alarm</span>
+                <span>{lang === 'ar' ? 'إضافة لهذا اليوم فقط' : 'Ajouter ce jour'}</span>
+              </button>
+            </form>
+
+            <div className="flex items-center justify-between text-[11px] font-bold pt-1 text-slate-500">
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-md bg-purple-100 border border-purple-400 inline-block"></span>
+                <span>{lang === 'ar' ? 'توقيت خاص باليوم' : 'Spécifique'}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-md bg-emerald-100 border border-emerald-400 inline-block"></span>
+                <span>{lang === 'ar' ? 'توقيت مشترك' : 'Partagé'}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-md bg-slate-200 border border-slate-300 inline-block"></span>
+                <span>{lang === 'ar' ? 'مقفول 🔒' : 'Bloqué 🔒'}</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setSelectedDayForSlots(null)}
+              className="w-full py-3.5 rounded-2xl bg-[#4221b6] text-white font-black text-xs sm:text-sm shadow-md hover:scale-[1.02] transition cursor-pointer"
+            >
+              {lang === 'ar' ? 'إنهاء وحفظ المواعيد' : 'Terminer'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Global / Shared Time Slots Modal for ALL Days */}
+      {showGlobalTimeModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full relative soft-card-shadow flex flex-col gap-6 border-2 border-[#4221b6]/50 animate-in fade-in zoom-in duration-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#4221b6] text-white flex items-center justify-center font-black text-lg shadow-md">
+                  <span className="material-symbols-outlined text-xl">more_time</span>
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-[#1c0576]">
+                    {lang === 'ar' ? 'التواقيت المشتركة لجميع الأيام 🌐' : 'Horaires communs pour tous les jours 🌐'}
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    {lang === 'ar' ? 'التواقيت المضافة هنا تظهر تلقائياً في كافة أيام التقويم' : 'Ces créneaux apparaissent sur tous les jours.'}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowGlobalTimeModal(false)}
+                className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center hover:bg-red-100 text-slate-600 hover:text-red-600 transition cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+
+            {/* Global Slots List */}
+            <div className="flex flex-col gap-2 max-h-56 overflow-y-auto">
+              {(user?.timeSlots || ['10:00', '14:00', '16:30']).map((slotObj, idx) => {
+                const slotTime = typeof slotObj === 'object' ? (slotObj[lang] || slotObj.fr || slotObj.ar || '') : slotObj;
+                return (
+                  <div key={idx} className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between font-extrabold text-sm text-slate-800">
+                    <span className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-base text-[#4221b6]">schedule</span>
+                      <span>{slotTime}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteGlobalTimeSlot(slotTime)}
+                      className="w-8 h-8 rounded-xl bg-red-100 text-red-600 hover:bg-red-600 hover:text-white flex items-center justify-center transition cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-sm">delete</span>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Add New Global Time Slot */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const inputEl = e.target.elements.newGlobalSlotInput;
+                if (inputEl && inputEl.value) {
+                  handleAddGlobalTimeSlot(inputEl.value);
+                  inputEl.value = '';
+                }
+              }}
+              className="flex items-center gap-2 pt-2 border-t border-slate-100"
+            >
+              <input
+                name="newGlobalSlotInput"
+                type="time"
+                required
+                className="flex-1 px-4 py-2.5 rounded-xl border-2 border-slate-200 text-sm font-black text-slate-800 outline-none focus:border-[#4221b6] transition"
+              />
+              <button
+                type="submit"
+                disabled={lockSaving}
+                className="px-5 py-2.5 rounded-xl bg-[#4221b6] hover:bg-[#351996] text-white font-black text-xs flex items-center gap-1.5 transition cursor-pointer shadow-md"
+              >
+                <span className="material-symbols-outlined text-sm">add</span>
+                <span>{lang === 'ar' ? 'إضافة توقيت مشترك' : 'Ajouter'}</span>
+              </button>
+            </form>
+
+            <button
+              type="button"
+              onClick={() => setShowGlobalTimeModal(false)}
+              className="w-full py-3.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs sm:text-sm transition cursor-pointer"
+            >
+              {lang === 'ar' ? 'إغلاق' : 'Fermer'}
+            </button>
           </div>
         </div>
       )}

@@ -87,7 +87,25 @@ export default function DashboardPage() {
             return false;
           });
 
-          setSessions(myFiltered);
+          // Sort by session pack number (extracted from subject like "Séance 2/4" → 2), then by createdAt
+          const getSessionPackNum = (s) => {
+            // Try sessionNumber field first
+            if (s.sessionNumber) return Number(s.sessionNumber);
+            // Try extracting from subject e.g. "Français (Séance 2/4)"
+            const match = (s.subject || s.matiere || '').match(/[ée]ance\s+(\d+)\s*\//i);
+            if (match) return parseInt(match[1], 10);
+            return 9999;
+          };
+
+          const sorted = [...myFiltered].sort((a, b) => {
+            const numA = getSessionPackNum(a);
+            const numB = getSessionPackNum(b);
+            if (numA !== numB) return numA - numB;
+            // Secondary sort: by creation date
+            return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+          });
+
+          setSessions(sorted);
           try {
             localStorage.setItem('admin_sessions_cache', JSON.stringify(data.sessions));
           } catch {}
@@ -547,9 +565,11 @@ export default function DashboardPage() {
                   <h2 className="text-lg font-extrabold text-[#1c0576]">
                     {lang === 'ar' ? 'الحصص المحجوزة' : (t.dashboardPage?.nextSession || 'Mes séances programmées')}
                   </h2>
-                  {sessions.length > 0 && (
+                  {sessions.filter(s => s.status !== 'completed' && s.status !== 'done').length > 0 && (
                     <span className="text-xs text-slate-500 font-bold">
-                      {lang === 'ar' ? `${sessions.length} حصص مسجلة` : `${sessions.length} séance(s) enregistrée(s)`}
+                      {lang === 'ar'
+                        ? `${sessions.filter(s => s.status !== 'completed' && s.status !== 'done').length} حصص مسجلة`
+                        : `${sessions.filter(s => s.status !== 'completed' && s.status !== 'done').length} séance(s) enregistrée(s)`}
                     </span>
                   )}
                 </div>
@@ -574,7 +594,9 @@ export default function DashboardPage() {
             ) : sessions.length > 0 ? (
               /* REAL Sessions List Stacked Vertically */
               <div className="flex flex-col gap-4">
-                {sessions.map((sessionItem, index) => {
+                {sessions
+                  .filter(s => s.status !== 'completed' && s.status !== 'done')
+                  .map((sessionItem, index) => {
                   const isActive = isSessionActive(sessionItem);
 
                   return (
@@ -792,27 +814,6 @@ export default function DashboardPage() {
 
         {/* 4. Sidebar Section */}
         <aside className="flex flex-col gap-6">
-          {/* Reminder Card */}
-          <div className="bg-gradient-to-br from-[#fff3e0] to-[#ffe0b2] rounded-3xl p-5 border-2 border-[#ffb74d]/60 shadow-md flex items-center gap-4 relative">
-            {/* Admin Edit Button */}
-            {user?.role?.toLowerCase() === 'admin' && (
-              <button
-                onClick={() => setEditingSectionModal({ key: 'reminderBanner', title: lang === 'ar' ? 'قسم التذكير الهام' : 'Bannière de rappel' })}
-                className="absolute top-2 right-2 z-20 flex items-center gap-1 bg-[#f57c00] text-white px-2.5 py-1 rounded-full font-black text-[11px] shadow-md hover:scale-105 transition-all cursor-pointer border border-white/40"
-              >
-                <span className="material-symbols-outlined text-xs">edit</span>
-                <span>{lang === 'ar' ? 'تعديل' : 'Modifier'}</span>
-              </button>
-            )}
-
-            <div className="w-12 h-12 rounded-2xl bg-[#f57c00] text-white flex items-center justify-center shrink-0 shadow-md">
-              <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>campaign</span>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <h3 className="text-xs font-black text-[#e65100] uppercase tracking-wider">{t.dashboardPage?.reminderTag || 'Rappel'}</h3>
-              <p className="text-sm text-slate-800 font-extrabold leading-snug">{t.dashboardPage?.reminderText || 'N\'oubliez pas de vérifier vos devoirs et vos jeux !'}</p>
-            </div>
-          </div>
 
 
         </aside>

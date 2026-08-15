@@ -65,7 +65,10 @@ app.post("/api/auth/signup", async (req, res) => {
       role: newUser.role || 'user',
       status: newUser.status || 'Actif',
       availableDays: newUser.availableDays || ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'],
-      timeSlots: newUser.timeSlots || ['10:00', '14:00', '16:30'],
+      timeSlots: newUser.timeSlots || [],
+      blockedDates: newUser.blockedDates || [],
+      blockedSlots: newUser.blockedSlots || [],
+      customDaySlots: newUser.customDaySlots || {},
     };
 
     res.status(201).json({
@@ -101,7 +104,10 @@ app.post("/api/auth/login", async (req, res) => {
       role: user.role || 'user',
       status: user.status || 'Actif',
       availableDays: user.availableDays || ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'],
-      timeSlots: user.timeSlots || ['10:00', '14:00', '16:30'],
+      timeSlots: user.timeSlots || [],
+      blockedDates: user.blockedDates || [],
+      blockedSlots: user.blockedSlots || [],
+      customDaySlots: user.customDaySlots || {},
     };
 
     res.json({
@@ -131,9 +137,10 @@ app.get("/api/teachers", async (req, res) => {
       availableDays: t.availableDays && t.availableDays.length > 0
         ? t.availableDays
         : ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'],
-      timeSlots: t.timeSlots && t.timeSlots.length > 0
-        ? t.timeSlots
-        : ['10:00', '14:00', '16:30'],
+      timeSlots: t.timeSlots || [],
+      blockedDates: t.blockedDates || [],
+      blockedSlots: t.blockedSlots || [],
+      customDaySlots: t.customDaySlots || {},
     }));
 
     res.json({ teachers: formattedTeachers });
@@ -143,10 +150,10 @@ app.get("/api/teachers", async (req, res) => {
   }
 });
 
-// PUT Update Specific Teacher Schedule
+// PUT Update Specific Teacher Schedule & Blocked Dates & Blocked Time Slots
 app.put("/api/teachers/:id/schedule", async (req, res) => {
   try {
-    const { availableDays, timeSlots } = req.body;
+    const { availableDays, timeSlots, blockedDates, blockedSlots, customDaySlots } = req.body;
     const teacher = await User.findById(req.params.id);
     if (!teacher) {
       return res.status(404).json({ error: "Compte enseignant introuvable." });
@@ -154,6 +161,9 @@ app.put("/api/teachers/:id/schedule", async (req, res) => {
 
     if (availableDays !== undefined) teacher.availableDays = availableDays;
     if (timeSlots !== undefined) teacher.timeSlots = timeSlots;
+    if (blockedDates !== undefined) teacher.blockedDates = blockedDates;
+    if (blockedSlots !== undefined) teacher.blockedSlots = blockedSlots;
+    if (customDaySlots !== undefined) teacher.customDaySlots = customDaySlots;
     await teacher.save();
 
     res.json({
@@ -167,6 +177,9 @@ app.put("/api/teachers/:id/schedule", async (req, res) => {
         status: teacher.status,
         availableDays: teacher.availableDays,
         timeSlots: teacher.timeSlots,
+        blockedDates: teacher.blockedDates || [],
+        blockedSlots: teacher.blockedSlots || [],
+        customDaySlots: teacher.customDaySlots || {},
       }
     });
   } catch (error) {
@@ -204,7 +217,10 @@ app.get("/api/clients/:id", async (req, res) => {
         role: client.role || 'user',
         status: client.status || 'Actif',
         availableDays: client.availableDays || ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'],
-        timeSlots: client.timeSlots || ['10:00', '14:00', '16:30'],
+        timeSlots: client.timeSlots || [],
+        blockedDates: client.blockedDates || [],
+        blockedSlots: client.blockedSlots || [],
+        customDaySlots: client.customDaySlots || {},
       }
     });
   } catch (error) {

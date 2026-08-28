@@ -279,15 +279,6 @@ export default function HomePage() {
           <div className="lg:col-span-5 w-full">
             {isLoggedIn ? (
               <div className="bg-white rounded-3xl p-6 sm:p-7 shadow-xl border-2 border-[#8c90f6] flex flex-col gap-4">
-                <div className="flex items-center justify-between border-b border-surface-variant/60 pb-3">
-                  <div className="inline-flex items-center gap-2 bg-[#E1F5FE] text-[#0288D1] px-3.5 py-1 rounded-full font-bold text-xs">
-                    <span className="material-symbols-outlined text-base">play_circle</span>
-                    {t.homePage?.videoTag || 'Démonstration vidéo'}
-                  </div>
-                  <span className="text-xs font-bold text-[#4221b6] bg-[#e0d7ff] px-3 py-1 rounded-full">
-                    {lang === 'ar' ? 'عرض توضيحي' : 'Vidéo Démo'}
-                  </span>
-                </div>
 
                 <div className="space-y-1 text-left rtl:text-right">
                   <h3 className="text-lg font-extrabold text-[#2C3E2E]">

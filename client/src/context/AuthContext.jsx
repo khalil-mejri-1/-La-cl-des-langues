@@ -46,6 +46,7 @@ export function AuthProvider({ children }) {
             const hasChanged =
               prev.role !== data.user.role ||
               prev.status !== data.user.status ||
+              prev.picture !== data.user.picture ||
               JSON.stringify(prev.availableDays) !== JSON.stringify(data.user.availableDays) ||
               JSON.stringify(prev.timeSlots) !== JSON.stringify(data.user.timeSlots);
 
@@ -74,14 +75,15 @@ export function AuthProvider({ children }) {
       refreshUser();
     };
 
-    // Custom role update event listener
+    // Custom role/avatar update event listener
     const handleRoleUpdate = (event) => {
-      const { clientId, role, status } = event.detail || {};
+      const { clientId, role, status, picture } = event.detail || {};
       const currentId = user?.id || user?._id;
       if (clientId && currentId && String(clientId) === String(currentId)) {
         updateCurrentUser({
           ...(role !== undefined ? { role } : {}),
           ...(status !== undefined ? { status } : {}),
+          ...(picture !== undefined ? { picture } : {}),
         });
       } else {
         refreshUser();

@@ -58,12 +58,14 @@ app.post("/api/auth/signup", async (req, res) => {
 
     const userObj = {
       id: newUser._id,
+      _id: newUser._id,
       parentName: newUser.parentName,
       childName: newUser.childName,
       childAge: newUser.childAge,
       email: newUser.email,
       role: newUser.role || 'user',
       status: newUser.status || 'Actif',
+      picture: newUser.picture || '',
       availableDays: newUser.availableDays || ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'],
       timeSlots: newUser.timeSlots || [],
       blockedDates: newUser.blockedDates || [],
@@ -97,12 +99,14 @@ app.post("/api/auth/login", async (req, res) => {
 
     const userObj = {
       id: user._id,
+      _id: user._id,
       parentName: user.parentName,
       childName: user.childName,
       childAge: user.childAge,
       email: user.email,
       role: user.role || 'user',
       status: user.status || 'Actif',
+      picture: user.picture || '',
       availableDays: user.availableDays || ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'],
       timeSlots: user.timeSlots || [],
       blockedDates: user.blockedDates || [],
@@ -293,6 +297,7 @@ app.get("/api/clients/:id", async (req, res) => {
         email: client.email,
         role: client.role || 'user',
         status: client.status || 'Actif',
+        picture: client.picture || '',
         availableDays: client.availableDays || ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'],
         timeSlots: client.timeSlots || [],
         blockedDates: client.blockedDates || [],
@@ -306,10 +311,42 @@ app.get("/api/clients/:id", async (req, res) => {
   }
 });
 
-// Update Client Role & Status Endpoint (including teacher Subject)
+// Update Single Client Avatar/Picture Endpoint
+app.put("/api/clients/:id/avatar", async (req, res) => {
+  try {
+    const { picture } = req.body;
+    const client = await User.findById(req.params.id);
+    if (!client) {
+      return res.status(404).json({ error: "Client introuvable." });
+    }
+    client.picture = picture || "";
+    await client.save();
+
+    res.json({
+      message: "Photo mise à jour avec succès !",
+      picture: client.picture,
+      user: {
+        id: client._id,
+        _id: client._id,
+        parentName: client.parentName,
+        childName: client.childName,
+        childAge: client.childAge,
+        email: client.email,
+        role: client.role || 'user',
+        status: client.status || 'Actif',
+        picture: client.picture || '',
+      }
+    });
+  } catch (error) {
+    console.error("Erreur Update Client Avatar:", error);
+    res.status(500).json({ error: "Erreur lors de la mise à jour de l'avatar." });
+  }
+});
+
+// Update Client Role & Status Endpoint (including teacher Subject and picture)
 app.put("/api/clients/:id/role", async (req, res) => {
   try {
-    const { role, status, subject } = req.body;
+    const { role, status, subject, picture } = req.body;
     const client = await User.findById(req.params.id);
     if (!client) {
       return res.status(404).json({ error: "Client introuvable." });
@@ -317,6 +354,7 @@ app.put("/api/clients/:id/role", async (req, res) => {
     if (role !== undefined) client.role = role;
     if (status !== undefined) client.status = status;
     if (subject !== undefined) client.subject = subject;
+    if (picture !== undefined) client.picture = picture;
     await client.save();
 
     // If subject was provided, synchronize all sessions for this teacher

@@ -29,7 +29,7 @@ mongoose
 
 // Routes
 app.get("/", (req, res) => {
-  res.json({ status: "OK", message: "API Platform Français opérationnelle 1:10" });
+  res.json({ status: "OK", message: "API Platform Français opérationnelle 2:20" });
 });
 
 // Signup Endpoint - Register user in MongoDB

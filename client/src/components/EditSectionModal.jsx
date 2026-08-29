@@ -95,6 +95,7 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
         features: existing.features || defaultFeatures,
         tutors: existing.tutors || defaultTutors,
         videoUrl: existing.videoUrl || 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        videoThumbnail: existing.videoThumbnail || 'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=1200&q=80',
       };
     }
 
@@ -119,6 +120,7 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
           videoBtn: existing.en?.videoBtn || "Watch now",
         },
         videoUrl: existing.videoUrl || 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        videoThumbnail: existing.videoThumbnail || 'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=1200&q=80',
       };
     }
 
@@ -456,6 +458,7 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
           videoDesc: existing.en?.videoDesc || "Watch how our certified teachers guide your children to success.",
         },
         videoUrl: existing.videoUrl || 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        videoThumbnail: existing.videoThumbnail || 'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=1200&q=80',
       };
     }
 
@@ -1314,6 +1317,53 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
                         className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
                       />
                     </div>
+
+                    {/* Video Cover / Thumbnail Field & Preview */}
+                    <div className="space-y-2 pt-3 border-t border-slate-200">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-sm text-[#4221b6]">image</span>
+                          <span>{activeTab === 'ar' ? 'الصورة الخارجية للفيديو (Miniature / Thumbnail):' : 'Photo de couverture vidéo (Miniature) :'}</span>
+                        </label>
+                        {formData.videoThumbnail && (
+                          <button
+                            type="button"
+                            onClick={() => setFormData(prev => ({ ...prev, videoThumbnail: 'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=1200&q=80' }))}
+                            className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold underline cursor-pointer"
+                          >
+                            {activeTab === 'ar' ? 'استعادة الافتراضية' : 'Image par défaut'}
+                          </button>
+                        )}
+                      </div>
+
+                      <input
+                        type="text"
+                        value={formData.videoThumbnail || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, videoThumbnail: e.target.value }))}
+                        placeholder="https://images.unsplash.com/... أو رابط الصورة"
+                        className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                      />
+
+                      {/* Live Thumbnail Preview */}
+                      <div className="relative rounded-2xl overflow-hidden border-2 border-indigo-100 shadow-sm aspect-video bg-slate-100 mt-2 max-h-48 group">
+                        <img
+                          src={formData.videoThumbnail || 'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=1200&q=80'}
+                          alt="Video Cover Preview"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.src = 'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=1200&q=80';
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center pointer-events-none">
+                          <div className="w-12 h-12 rounded-full bg-[#4221b6]/90 text-white flex items-center justify-center shadow-lg border-2 border-white">
+                            <span className="material-symbols-outlined text-2xl ml-0.5">play_arrow</span>
+                          </div>
+                        </div>
+                        <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-md pointer-events-none">
+                          {activeTab === 'ar' ? 'معاينة الغلاف' : 'Aperçu couverture'}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1387,6 +1437,53 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
                     placeholder="https://www.youtube.com/watch?v=..."
                     className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
                   />
+                </div>
+
+                {/* Video Cover / Thumbnail Field & Preview */}
+                <div className="space-y-2 pt-3 border-t border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-sm text-[#4221b6]">image</span>
+                      <span>{activeTab === 'ar' ? 'الصورة الخارجية للفيديو (Miniature / Thumbnail):' : 'Photo de couverture vidéo (Miniature) :'}</span>
+                    </label>
+                    {formData.videoThumbnail && (
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, videoThumbnail: 'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=1200&q=80' }))}
+                        className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold underline cursor-pointer"
+                      >
+                        {activeTab === 'ar' ? 'استعادة الافتراضية' : 'Image par défaut'}
+                      </button>
+                    )}
+                  </div>
+
+                  <input
+                    type="text"
+                    value={formData.videoThumbnail || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, videoThumbnail: e.target.value }))}
+                    placeholder="https://images.unsplash.com/... أو رابط الصورة"
+                    className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                  />
+
+                  {/* Live Thumbnail Preview */}
+                  <div className="relative rounded-2xl overflow-hidden border-2 border-indigo-100 shadow-sm aspect-video bg-slate-100 mt-2 max-h-48 group">
+                    <img
+                      src={formData.videoThumbnail || 'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=1200&q=80'}
+                      alt="Video Cover Preview"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = 'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=1200&q=80';
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center pointer-events-none">
+                      <div className="w-12 h-12 rounded-full bg-[#4221b6]/90 text-white flex items-center justify-center shadow-lg border-2 border-white">
+                        <span className="material-symbols-outlined text-2xl ml-0.5">play_arrow</span>
+                      </div>
+                    </div>
+                    <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-md pointer-events-none">
+                      {activeTab === 'ar' ? 'معاينة الغلاف' : 'Aperçu couverture'}
+                    </div>
+                  </div>
                 </div>
               </>
             )}

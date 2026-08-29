@@ -291,7 +291,7 @@ export default function HomePage() {
 
                 <div className="w-full relative rounded-2xl overflow-hidden border-2 border-surface-variant group cursor-pointer aspect-video shadow-md mt-1">
                   <img
-                    src="https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=1200&q=80"
+                    src={t.homePage?.videoThumbnail || "https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=1200&q=80"}
                     alt="Video Preview"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
@@ -549,7 +549,7 @@ export default function HomePage() {
               onClick={() => setIsVideoOpen(true)}
             >
               <img
-                src="https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=1200&q=80"
+                src={t.homePage?.videoThumbnail || "https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=1200&q=80"}
                 alt="Video Preview"
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
               />

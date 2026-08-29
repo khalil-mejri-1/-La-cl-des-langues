@@ -133,8 +133,12 @@ export function LanguageProvider({ children }) {
     }
   }
 
-  if (customSections?.hero?.videoUrl || customSections?.hero?.[lang]?.videoUrl) {
-    homePageSection.videoUrl = customSections.hero.videoUrl || customSections.hero[lang]?.videoUrl;
+  if (customSections?.hero?.videoUrl || customSections?.hero?.[lang]?.videoUrl || customSections?.videoSection?.videoUrl) {
+    homePageSection.videoUrl = customSections.hero?.videoUrl || customSections.hero?.[lang]?.videoUrl || customSections.videoSection?.videoUrl;
+  }
+
+  if (customSections?.hero?.videoThumbnail || customSections?.videoSection?.videoThumbnail) {
+    homePageSection.videoThumbnail = customSections.hero?.videoThumbnail || customSections.videoSection?.videoThumbnail;
   }
 
   const howItWorksSection = (() => {

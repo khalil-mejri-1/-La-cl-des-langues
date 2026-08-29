@@ -105,9 +105,9 @@ export const syncSessionsToNotifications = (sessions = [], user = null) => {
         targetStudentId: sStudentId,
         targetStudentEmail: sStudentEmail,
         title: {
-          fr: `📩 Demande de cours (${s.day || 'Séance'})`,
-          ar: `📩 طلب حجز حصة (${s.day || 'حصة'})`,
-          en: `📩 Session booking (${s.day || 'Session'})`,
+          fr: `📩 Demande de cours`,
+          ar: `📩 طلب حجز حصة`,
+          en: `📩 Session Booking Request`,
         },
         desc: {
           fr: `L'élève ${studentDisplayName} a réservé pour le ${timeInfo} avec ${teacherDisplayName}.`,

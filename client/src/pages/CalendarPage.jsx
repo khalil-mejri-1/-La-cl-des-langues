@@ -1144,39 +1144,39 @@ export default function CalendarPage() {
       </section>
 
       {/* 5. CONFIRMATION BUTTON - SHOWN WHEN ALL 4 SESSIONS ARE SCHEDULED */}
-      <section className="flex flex-col items-center justify-center mt-4">
+      <section className="flex flex-col items-center justify-center mt-4 w-full max-w-xl mx-auto px-3">
         {packSessions.every(s => s.day && s.time) ? (
           <button
             onClick={handleConfirmReservation}
             disabled={bookingLoading}
-            className="bg-[#4221b6] hover:bg-[#351996] text-white font-black text-headline-md px-12 py-4 h-[72px] w-full md:w-auto rounded-full transition-all flex items-center justify-center gap-3 cursor-pointer shadow-xl hover:scale-105 border-2 border-emerald-400 animate-bounce"
+            className="w-full sm:w-auto min-h-[56px] sm:min-h-[64px] px-6 sm:px-10 py-3 sm:py-4 rounded-2xl sm:rounded-full bg-gradient-to-r from-[#4221b6] via-[#4f27d8] to-[#5a2ee6] hover:from-[#351996] hover:to-[#4a22c4] text-white font-black text-sm sm:text-base md:text-lg transition-all flex items-center justify-center gap-2.5 sm:gap-3 cursor-pointer shadow-xl hover:scale-102 active:scale-98 border-2 border-emerald-400 text-center leading-snug"
           >
             {bookingLoading ? (
               <>
-                <span>{lang === 'ar' ? 'جاري إرسال الطلب للمعلمة...' : 'Envoi de la demande...'}</span>
-                <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                <span className="truncate">{lang === 'ar' ? 'جاري إرسال الطلب للمعلمة...' : 'Envoi de la demande...'}</span>
+                <span className="material-symbols-outlined animate-spin text-lg sm:text-xl shrink-0">progress_activity</span>
               </>
             ) : (
               <>
                 <span>{lang === 'ar' ? 'تأكيد حجز الباقة وإرسال الطلب للأستاذ ✓' : 'Confirmer et envoyer la demande ✓'}</span>
-                <span className="material-symbols-outlined text-2xl text-emerald-300">send</span>
+                <span className="material-symbols-outlined text-lg sm:text-2xl text-emerald-300 shrink-0">send</span>
               </>
             )}
           </button>
         ) : (
-          <div className="flex flex-col items-center gap-3 w-full max-w-md">
+          <div className="flex flex-col items-center gap-2.5 w-full max-w-md">
             <button
               disabled
-              className="bg-slate-100 border-2 border-slate-300 text-slate-400 font-extrabold text-sm sm:text-base px-8 py-4 h-[64px] w-full rounded-full flex items-center justify-center gap-3 cursor-not-allowed shadow-none"
+              className="w-full min-h-[52px] sm:min-h-[58px] px-5 sm:px-8 py-3 rounded-2xl sm:rounded-full bg-slate-100 border-2 border-slate-300 text-slate-400 font-extrabold text-xs sm:text-sm md:text-base flex items-center justify-center gap-2.5 cursor-not-allowed shadow-none text-center leading-snug"
             >
-              <span className="material-symbols-outlined text-xl text-slate-400">lock</span>
+              <span className="material-symbols-outlined text-base sm:text-xl text-slate-400 shrink-0">lock</span>
               <span>
                 {lang === 'ar'
                   ? `يرجى تحديد تواريخ الحصص الأربع أولاً (${packSessions.filter(s => s.day && s.time).length} / 4)`
                   : `Veuillez planifier les 4 séances (${packSessions.filter(s => s.day && s.time).length} / 4)`}
               </span>
             </button>
-            <p className="text-xs text-slate-500 font-medium text-center">
+            <p className="text-[11px] sm:text-xs text-slate-500 font-medium text-center leading-relaxed">
               {lang === 'ar'
                 ? '🔒 ينفتح زر التأكيد وتأكيد الحجز فور الانتهاء من اختيار يوم وساعة لكل حصة.'
                 : '🔒 Le bouton de confirmation s\'activera après la sélection des 4 dates.'}
@@ -1189,24 +1189,24 @@ export default function CalendarPage() {
       {/* 6. POPUP MODAL: CALENDAR & TIME SELECTOR FOR SINGLE SESSION */}
       {/* ========================================================================= */}
       {modalSessionIndex !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl p-6 sm:p-8 flex flex-col gap-6 relative border-2 border-[#8c90f6]/50 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-sm sm:max-w-md md:max-w-lg p-4 sm:p-6 flex flex-col gap-3.5 sm:gap-5 relative border-2 border-[#8c90f6]/40 max-h-[92vh] overflow-y-auto">
             
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-[#4221b6] text-white flex items-center justify-center font-black text-lg shadow-md shrink-0">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#4221b6] text-white flex items-center justify-center font-black text-xs sm:text-base shadow-sm shrink-0">
                   {modalSessionIndex === 'trial' ? '🎁' : modalSessionIndex + 1}
                 </div>
-                <div>
-                  <h3 className="text-lg font-black text-[#1c0576]">
+                <div className="min-w-0">
+                  <h3 className="text-xs sm:text-sm md:text-base font-extrabold text-[#1c0576] truncate">
                     {modalSessionIndex === 'trial'
-                      ? (lang === 'ar' ? 'حجز موعد الحصة التجريبية المجانية' : 'Planifier votre Séance d\'Essai Gratuite')
-                      : (lang === 'ar' ? `تحديد موعد الحصة رقم ${modalSessionIndex + 1}` : `Planifier la Séance ${modalSessionIndex + 1}`)}
+                      ? (lang === 'ar' ? 'حجز موعد الحصة التجريبية المجانية' : 'Séance d\'Essai Gratuite')
+                      : (lang === 'ar' ? `تحديد موعد الحصة ${modalSessionIndex + 1}` : `Planifier la Séance ${modalSessionIndex + 1}`)}
                   </h3>
-                  <p className="text-xs text-slate-500 font-medium">
+                  <p className="text-[10px] sm:text-xs text-slate-500 font-medium truncate">
                     {modalStep === 'date'
-                      ? (lang === 'ar' ? 'الخطوة 1: اختر يوماً من تقويم المعلمة' : 'Étape 1 : Choisissez une date du calendrier de la maîtresse')
+                      ? (lang === 'ar' ? 'الخطوة 1: اختر يوماً من تقويم المعلمة' : 'Étape 1 : Choisissez une date')
                       : (lang === 'ar' ? `الخطوة 2: اختر الساعة ليوم (${getFormattedDayLabel(tempSelectedDate)})` : `Étape 2 : Choisissez l'heure (${getFormattedDayLabel(tempSelectedDate)})`)}
                   </p>
                 </div>
@@ -1215,17 +1215,17 @@ export default function CalendarPage() {
               <button
                 type="button"
                 onClick={() => setModalSessionIndex(null)}
-                className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center hover:bg-red-100 text-slate-600 hover:text-red-600 transition cursor-pointer"
+                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-red-50 text-slate-500 hover:text-red-600 transition cursor-pointer shrink-0 ml-1"
               >
-                <span className="material-symbols-outlined text-lg">close</span>
+                <span className="material-symbols-outlined text-base">close</span>
               </button>
             </div>
 
             {/* STEP 1: MONTH CALENDAR GRID */}
             {modalStep === 'date' && (
-              <div className="space-y-5">
+              <div className="space-y-3 sm:space-y-4">
                 {/* Month Navigation */}
-                <div className="flex items-center justify-between bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                <div className="flex items-center justify-between bg-slate-50/90 px-3 py-1.5 sm:py-2 rounded-xl border border-slate-200/80">
                   <button
                     type="button"
                     onClick={() => {
@@ -1233,12 +1233,12 @@ export default function CalendarPage() {
                       prev.setMonth(prev.getMonth() - 1);
                       setCurrentCalMonth(prev);
                     }}
-                    className="p-2 rounded-xl bg-white hover:bg-slate-200 text-slate-700 shadow-sm transition cursor-pointer flex items-center justify-center"
+                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white hover:bg-slate-200 text-slate-700 shadow-xs transition cursor-pointer flex items-center justify-center border border-slate-200"
                   >
-                    <span className="material-symbols-outlined text-base">{isRtl ? 'chevron_right' : 'chevron_left'}</span>
+                    <span className="material-symbols-outlined text-sm sm:text-base">{isRtl ? 'chevron_right' : 'chevron_left'}</span>
                   </button>
 
-                  <h4 className="text-base font-black text-[#1c0576]">
+                  <h4 className="text-xs sm:text-sm font-black text-[#1c0576] capitalize">
                     {currentCalMonth.toLocaleDateString(lang === 'ar' ? 'ar-TN' : 'fr-FR', { month: 'long', year: 'numeric' })}
                   </h4>
 
@@ -1249,23 +1249,23 @@ export default function CalendarPage() {
                       next.setMonth(next.getMonth() + 1);
                       setCurrentCalMonth(next);
                     }}
-                    className="p-2 rounded-xl bg-white hover:bg-slate-200 text-slate-700 shadow-sm transition cursor-pointer flex items-center justify-center"
+                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white hover:bg-slate-200 text-slate-700 shadow-xs transition cursor-pointer flex items-center justify-center border border-slate-200"
                   >
-                    <span className="material-symbols-outlined text-base">{isRtl ? 'chevron_left' : 'chevron_right'}</span>
+                    <span className="material-symbols-outlined text-sm sm:text-base">{isRtl ? 'chevron_left' : 'chevron_right'}</span>
                   </button>
                 </div>
 
                 {/* Calendar Days Header */}
                 <div className="grid grid-cols-7 text-center gap-1">
                   {(lang === 'ar' ? ['أحد', 'إثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت'] : ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam']).map((d, idx) => (
-                    <span key={idx} className="text-xs font-black text-slate-400 py-1 uppercase tracking-wider">
+                    <span key={idx} className="text-[10px] sm:text-[11px] font-black text-slate-400 py-0.5 uppercase tracking-wider">
                       {d}
                     </span>
                   ))}
                 </div>
 
                 {/* Calendar Days Cells */}
-                <div className="grid grid-cols-7 gap-2">
+                <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
                   {(() => {
                     const year = currentCalMonth.getFullYear();
                     const month = currentCalMonth.getMonth();
@@ -1275,7 +1275,7 @@ export default function CalendarPage() {
 
                     // Empty slots before month start
                     for (let i = 0; i < firstDayOfMonth; i++) {
-                      cells.push(<div key={`empty-${i}`} className="h-11 rounded-xl bg-transparent"></div>);
+                      cells.push(<div key={`empty-${i}`} className="h-8 sm:h-9 md:h-10 rounded-lg sm:rounded-xl bg-transparent"></div>);
                     }
 
                     // Month Days
@@ -1292,19 +1292,19 @@ export default function CalendarPage() {
                           type="button"
                           disabled={isBlocked}
                           onClick={() => handleSelectModalDate(dateStr)}
-                          className={`h-12 rounded-2xl font-black text-xs sm:text-sm flex flex-col items-center justify-center transition-all relative cursor-pointer ${
+                          className={`h-8 sm:h-9 md:h-10 rounded-lg sm:rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center transition-all relative cursor-pointer ${
                             isBlocked
-                              ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60 line-through'
+                              ? 'bg-slate-100 text-slate-300 border border-slate-200 cursor-not-allowed line-through'
                               : isSelected
-                                ? 'bg-[#4221b6] text-white shadow-lg scale-105 ring-4 ring-[#8c90f6]/30'
+                                ? 'bg-[#4221b6] text-white shadow-md font-black scale-105 ring-2 ring-[#8c90f6]/40'
                                 : isToday
                                   ? 'bg-emerald-50 text-emerald-800 border-2 border-emerald-400 font-extrabold'
-                                  : 'bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 hover:border-[#4221b6]'
+                                  : 'bg-slate-50/80 hover:bg-white text-slate-800 border border-slate-200 hover:border-[#4221b6]'
                           }`}
                         >
                           <span>{dayNum}</span>
                           {isBlocked && (
-                            <span className="material-symbols-outlined text-[10px] text-red-500 absolute top-1 right-1">lock</span>
+                            <span className="material-symbols-outlined text-[8px] sm:text-[9px] text-red-400 absolute top-0.5 right-0.5">lock</span>
                           )}
                         </button>
                       );
@@ -1314,14 +1314,14 @@ export default function CalendarPage() {
                   })()}
                 </div>
 
-                <div className="flex items-center justify-between text-xs font-bold pt-2 text-slate-500 border-t border-slate-100">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-full bg-slate-200 border border-slate-300 inline-block"></span>
-                    <span>{lang === 'ar' ? 'أيام مقفولة من الأستاذ 🔒' : 'Jours bloqués 🔒'}</span>
+                <div className="flex items-center justify-between text-[10px] sm:text-xs font-bold pt-2 text-slate-400 border-t border-slate-100">
+                  <div className="flex items-center gap-1">
+                    <span className="w-2.5 h-2.5 rounded-full bg-slate-200 border border-slate-300 inline-block"></span>
+                    <span>{lang === 'ar' ? 'مقفول 🔒' : 'Bloqué 🔒'}</span>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-full bg-[#4221b6] inline-block"></span>
-                    <span>{lang === 'ar' ? 'اليوم المحدد' : 'Sélectionné'}</span>
+                  <div className="flex items-center gap-1">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#4221b6] inline-block"></span>
+                    <span>{lang === 'ar' ? 'المحدد' : 'Sélectionné'}</span>
                   </div>
                 </div>
               </div>
@@ -1329,26 +1329,26 @@ export default function CalendarPage() {
 
             {/* STEP 2: TIME SELECTOR GRID */}
             {modalStep === 'time' && (
-              <div className="space-y-5">
-                <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-emerald-900 font-bold text-xs sm:text-sm">
-                    <span className="material-symbols-outlined text-emerald-600">event_available</span>
-                    <span>{lang === 'ar' ? 'اليوم المختار :' : 'Date choisie :'} {getFormattedDayLabel(tempSelectedDate)}</span>
+              <div className="space-y-3 sm:space-y-4">
+                <div className="p-2.5 sm:p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1.5 text-emerald-900 font-bold truncate">
+                    <span className="material-symbols-outlined text-emerald-600 text-base shrink-0">event_available</span>
+                    <span className="truncate">{lang === 'ar' ? 'اليوم المختار :' : 'Date choisie :'} {getFormattedDayLabel(tempSelectedDate)}</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => setModalStep('date')}
-                    className="text-xs text-[#4221b6] font-black underline cursor-pointer"
+                    className="text-xs text-[#4221b6] font-black underline cursor-pointer shrink-0 ml-2"
                   >
-                    {lang === 'ar' ? 'تغيير اليوم' : 'Changer de date'}
+                    {lang === 'ar' ? 'تغيير' : 'Changer'}
                   </button>
                 </div>
 
-                <h4 className="text-sm font-black text-slate-800">
+                <h4 className="text-xs sm:text-sm font-extrabold text-slate-800">
                   {lang === 'ar' ? 'اختر الساعة المناسبة:' : 'Choisissez l\'horaire :'}
                 </h4>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5">
                   {(() => {
                     // Combine global shared slots + day-specific slots for this exact date
                     const daySpecificSlots = teacherCustomDaySlots[tempSelectedDate] || [];
@@ -1356,14 +1356,14 @@ export default function CalendarPage() {
 
                     if (combinedSlots.length === 0) {
                       return (
-                        <div className="col-span-3 py-8 text-center">
-                          <div className="w-14 h-14 mx-auto rounded-full bg-slate-100 flex items-center justify-center mb-3">
-                            <span className="material-symbols-outlined text-2xl text-slate-400">schedule_off</span>
+                        <div className="col-span-2 sm:col-span-3 py-6 text-center">
+                          <div className="w-10 h-10 mx-auto rounded-full bg-slate-100 flex items-center justify-center mb-2">
+                            <span className="material-symbols-outlined text-xl text-slate-400">schedule_off</span>
                           </div>
-                          <p className="text-sm font-bold text-slate-500">
-                            {lang === 'ar' ? 'لا يوجد توقيت متاح لهذا اليوم' : 'Aucun horaire disponible pour ce jour'}
+                          <p className="text-xs font-bold text-slate-500">
+                            {lang === 'ar' ? 'لا يوجد توقيت متاح لهذا اليوم' : 'Aucun horaire disponible'}
                           </p>
-                          <p className="text-xs text-slate-400 mt-1">
+                          <p className="text-[10px] text-slate-400 mt-0.5">
                             {lang === 'ar' ? 'يرجى اختيار يوم آخر' : 'Veuillez choisir une autre date'}
                           </p>
                         </div>
@@ -1379,13 +1379,13 @@ export default function CalendarPage() {
                         return (
                           <div
                             key={idx}
-                            className="p-4 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-100 text-slate-400 font-bold text-xs flex items-center justify-center gap-1.5 cursor-not-allowed opacity-60 line-through"
+                            className="py-2 px-2.5 rounded-xl border border-dashed border-slate-200 bg-slate-100 text-slate-400 font-bold text-[11px] flex items-center justify-center gap-1 cursor-not-allowed opacity-60 line-through"
                           >
                             <span className="material-symbols-outlined text-xs text-red-500">lock</span>
                             <span>{slot}</span>
-                            <span className="text-[10px] no-underline font-black bg-slate-200 text-slate-600 px-1 rounded">
+                            <span className="text-[9px] no-underline font-black bg-slate-200 text-slate-600 px-1 rounded">
                               {isTeacherBlocked
-                                ? (lang === 'ar' ? 'مقفول 🔒' : 'Bloqué 🔒')
+                                ? (lang === 'ar' ? 'مقفول' : 'Bloqué')
                                 : (lang === 'ar' ? `حصة ${isTaken.id}` : `S${isTaken.id}`)}
                             </span>
                           </div>
@@ -1397,9 +1397,9 @@ export default function CalendarPage() {
                           key={idx}
                           type="button"
                           onClick={() => handleSelectModalTime(slot)}
-                          className="p-4 rounded-2xl border-2 border-slate-200 bg-white hover:border-[#4221b6] hover:bg-[#4221b6] hover:text-white font-extrabold text-sm sm:text-base flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm hover:scale-105 text-slate-800"
+                          className="py-2.5 sm:py-3 px-3 rounded-xl border-2 border-slate-200 bg-white hover:border-[#4221b6] hover:bg-[#4221b6] hover:text-white font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-xs hover:scale-102 text-slate-800"
                         >
-                          <span className="material-symbols-outlined text-base">schedule</span>
+                          <span className="material-symbols-outlined text-sm sm:text-base">schedule</span>
                           <span>{slot}</span>
                         </button>
                       );
@@ -1414,9 +1414,9 @@ export default function CalendarPage() {
 
       {/* Success Booking Modal Overlay */}
       {isSuccessOpen && (
-        <div className="fixed inset-0 bg-surface/95 z-50 flex flex-col items-center justify-center p-4 sm:p-6 backdrop-blur-sm overflow-y-auto">
-          <div className="text-center space-y-6 max-w-lg bg-white p-6 sm:p-8 rounded-3xl border-2 border-[#4221b6] shadow-2xl animate-in zoom-in-95">
-            <div className="w-20 h-20 mx-auto rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-4xl shadow-inner animate-bounce">
+        <div className="fixed inset-0 z-[1000] bg-surface/95 flex flex-col items-center justify-center p-4 sm:p-6 backdrop-blur-sm overflow-y-auto">
+          <div className="text-center space-y-5 max-w-sm sm:max-w-md bg-white p-5 sm:p-8 rounded-3xl border-2 border-[#4221b6] shadow-2xl animate-in zoom-in-95">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-3xl sm:text-4xl shadow-inner animate-bounce">
               {isSuccessOpen === 'trial' ? '🎁' : '✓'}
             </div>
             

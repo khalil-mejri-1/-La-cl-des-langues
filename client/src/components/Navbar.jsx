@@ -289,6 +289,17 @@ export default function Navbar() {
       return lang === 'ar' ? `منذ ${days} يوم` : `il y a ${days}j`;
     } catch { return ''; }
   };
+
+  const cleanTitle = (raw) => {
+    if (!raw) return '';
+    const str = typeof raw === 'object' ? (raw[lang] || raw.fr || raw.ar || raw.en || '') : String(raw);
+    return str
+      .replace(/\s*\(\d{4}-\d{2}-\d{2}\)/g, '')
+      .replace(/\s*\(Séance\)/g, '')
+      .replace(/\s*\(حصة\)/g, '')
+      .replace(/\s*\(Session\)/g, '')
+      .trim();
+  };
   // ──────────────────────────────────────────────────────────────────────────
 
   const navLinks = [
@@ -409,22 +420,27 @@ export default function Navbar() {
                 )}
               </button>
 
-              {/* Notifications Popover */}
-              {isNotificationsOpen && (
-                <>
+              {/* Notifications Popover / Mobile Sheet via Portal */}
+              {isNotificationsOpen && typeof document !== 'undefined' && createPortal(
+                <div className="fixed inset-0 z-[9999] flex flex-col justify-start items-center p-3 sm:p-0 pointer-events-none">
+                  {/* Fullscreen Dark Backdrop covering 100% of website */}
                   <div
                     onClick={() => setIsNotificationsOpen(false)}
-                    className="fixed inset-0 z-40 bg-black/5 cursor-pointer"
+                    className="fixed inset-0 bg-black/60 cursor-pointer pointer-events-auto transition-opacity duration-200 animate-in fade-in"
                   ></div>
 
-                  <div className={`absolute top-full mt-3 ${isRtl ? 'left-0' : 'right-0'} w-80 sm:w-96 bg-surface-container-lowest rounded-3xl soft-card-shadow border border-surface-variant z-50 overflow-hidden transform transition-all duration-200 notif-popover-responsive`}>
-                    <div className="p-4 px-5 bg-surface-container-low border-b border-surface-variant flex justify-between items-center">
+                  {/* Popover Card */}
+                  <div className={`pointer-events-auto w-full max-w-md sm:w-96 bg-white rounded-3xl shadow-2xl border-2 border-[#8c90f6]/40 z-[10000] overflow-hidden transform transition-all duration-200 mt-20 sm:mt-0 sm:fixed sm:top-[86px] ${isRtl ? 'sm:left-6 md:left-12' : 'sm:right-6 md:right-12'} flex flex-col max-h-[calc(100vh-100px)] animate-in zoom-in-95`}>
+                    <div className="p-3.5 sm:p-4 px-4 sm:px-5 bg-gradient-to-r from-[#f5f3ff] to-white border-b border-slate-100 flex justify-between items-center shrink-0">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-headline-md text-headline-md text-on-surface text-base font-bold hide-notif-title-640">
+                        <div className="w-8 h-8 rounded-xl bg-[#4221b6] text-white flex items-center justify-center text-sm shadow-xs">
+                          🔔
+                        </div>
+                        <h3 className="text-sm sm:text-base font-black text-[#1c0576]">
                           {lang === 'ar' ? 'الإشعارات' : 'Notifications'}
                         </h3>
                         {unreadCount > 0 && (
-                          <span className="px-2 py-0.5 rounded-full text-xs font-black bg-[#4221b6] text-white">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-black bg-[#4221b6] text-white shadow-xs">
                             {unreadCount}
                           </span>
                         )}
@@ -432,21 +448,22 @@ export default function Navbar() {
                       {notifications.length > 0 && (
                         <button
                           onClick={markAllRead}
-                          className="text-xs font-label-bold text-[#4221b6] hover:underline font-bold cursor-pointer"
+                          className="text-xs font-extrabold text-[#4221b6] hover:text-[#351996] hover:underline cursor-pointer flex items-center gap-1"
                         >
-                          {lang === 'ar' ? 'تحديد كمقروء' : 'Tout marquer lu'}
+                          <span className="material-symbols-outlined text-sm">done_all</span>
+                          <span>{lang === 'ar' ? 'تحديد الكل كمقروء' : 'Tout marquer lu'}</span>
                         </button>
                       )}
                     </div>
 
-                    <div className="divide-y divide-surface-variant max-h-[400px] overflow-y-auto">
+                    <div className="divide-y divide-slate-100 overflow-y-auto flex-1">
                       {notifications.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-10 px-4 text-center gap-3">
-                          <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center">
-                            <span className="material-symbols-outlined text-2xl">notifications_none</span>
+                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center gap-3">
+                          <div className="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center">
+                            <span className="material-symbols-outlined text-2xl">notifications_off</span>
                           </div>
-                          <p className="text-xs font-bold text-slate-400">
-                            {lang === 'ar' ? 'لا توجد إشعارات بعد' : 'Aucune notification pour l\'instant'}
+                          <p className="text-xs font-bold text-slate-500">
+                            {lang === 'ar' ? 'لا توجد إشعارات حالياً' : 'Aucune notification pour l\'instant'}
                           </p>
                         </div>
                       ) : (
@@ -458,7 +475,7 @@ export default function Navbar() {
                           
                           const descText = typeof notif.desc === 'object'
                             ? (notif.desc[lang] || notif.desc.fr || notif.desc.ar || '')
-                            : (notif.desc || '');
+                            : (notif.desc || (typeof notif.message === 'object' ? (notif.message[lang] || notif.message.fr) : notif.message) || '');
 
                           const iconName = notif.icon || (notif.type === 'MEET_LINK_ADDED' ? 'videocam' : notif.type === 'NEW_USER_REGISTERED' ? 'person_add' : 'calendar_month');
                           const iconBg = notif.iconBg || (notif.type === 'MEET_LINK_ADDED' ? 'bg-emerald-100 text-emerald-700' : notif.type === 'NEW_USER_REGISTERED' ? 'bg-blue-100 text-blue-700' : 'bg-[#e0d7ff] text-[#4221b6]');
@@ -467,26 +484,26 @@ export default function Navbar() {
                             <div
                               key={notif.id}
                               onClick={() => handleNotificationClick(notif)}
-                              className={`p-4 flex gap-3 hover:bg-surface-container-low transition-colors cursor-pointer border-b border-surface-variant/40 last:border-b-0 ${isUnread ? 'bg-[#F5F3FF]' : ''}`}
+                              className={`p-3.5 sm:p-4 flex gap-3 hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100 last:border-b-0 ${isUnread ? 'bg-[#f7f5ff]' : ''}`}
                             >
-                              <div className={`w-10 h-10 rounded-2xl ${iconBg} flex items-center justify-center shrink-0 mt-0.5 shadow-sm`}>
-                                <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+                              <div className={`w-10 h-10 rounded-2xl ${iconBg} flex items-center justify-center shrink-0 mt-0.5 shadow-xs`}>
+                                <span className="material-symbols-outlined text-lg sm:text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>
                                   {iconName}
                                 </span>
                               </div>
                               <div className="flex-grow space-y-1 min-w-0">
                                 <div className="flex justify-between items-start gap-2">
-                                  <h4 className="font-label-bold text-on-surface text-xs sm:text-sm font-bold leading-tight flex items-center gap-1.5">
-                                    <span>{titleText}</span>
+                                  <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 leading-snug flex items-center gap-1.5 min-w-0 flex-1">
+                                    <span className="break-words">{cleanTitle(titleText)}</span>
                                     {isUnread && (
-                                      <span className="inline-block w-2 h-2 rounded-full bg-[#4221b6] shrink-0"></span>
+                                      <span className="inline-block w-2 h-2 rounded-full bg-[#4221b6] shrink-0 animate-pulse"></span>
                                     )}
                                   </h4>
-                                  <span className="text-[10px] sm:text-[11px] text-tertiary whitespace-nowrap shrink-0">
+                                  <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 whitespace-nowrap shrink-0 bg-slate-100 px-2 py-0.5 rounded-full">
                                     {formatRelativeTime(notif.timestamp)}
                                   </span>
                                 </div>
-                                <p className="text-xs text-on-surface-variant leading-relaxed">
+                                <p className="text-xs text-slate-600 font-medium leading-relaxed">
                                   {descText}
                                 </p>
                               </div>
@@ -496,17 +513,18 @@ export default function Navbar() {
                       )}
                     </div>
 
-                    <div className="p-3 bg-surface-container-low border-t border-surface-variant text-center">
+                    <div className="p-3 bg-slate-50 border-t border-slate-100 flex items-center justify-center shrink-0">
                       <button
                         onClick={() => setIsNotificationsOpen(false)}
-                        className="text-xs font-label-bold text-on-surface-variant hover:text-primary transition-colors font-bold cursor-pointer inline-flex items-center gap-1"
+                        className="text-xs font-black text-slate-600 hover:text-[#4221b6] transition-colors cursor-pointer inline-flex items-center gap-1 px-4 py-1.5 rounded-full hover:bg-slate-200"
                       >
-                        <span>{lang === 'ar' ? 'إغلاق' : 'Fermer'}</span>
                         <span className="material-symbols-outlined text-sm">close</span>
+                        <span>{lang === 'ar' ? 'إغلاق' : 'Fermer'}</span>
                       </button>
                     </div>
                   </div>
-                </>
+                </div>,
+                document.body
               )}
             </div>
 
@@ -598,161 +616,159 @@ export default function Navbar() {
       {/* Render Creative Overlay Menu Portal to document.body so it overlays ALL page elements cleanly */}
       {isMenuOpen && createPortal(
         <>
-          {/* Global Backdrop attached directly to body */}
+          {/* Global Dark Backdrop attached directly to body */}
           <div
             onClick={() => setIsMenuOpen(false)}
             style={{ zIndex: 999998 }}
-            className="creative-menu-overlay fixed inset-0 bg-black/60 backdrop-blur-md"
+            className="creative-menu-overlay fixed inset-0 bg-black/60 cursor-pointer transition-opacity duration-200"
           />
 
           {/* Floating Glassmorphic Menu Card */}
           <div
             style={{ zIndex: 999999 }}
-            className={`creative-menu-card fixed top-[88px] ${isRtl ? 'left-4 sm:left-8' : 'right-4 sm:right-8'} w-[calc(100vw-32px)] sm:w-[400px] bg-white rounded-3xl border border-slate-200/80 p-5 shadow-[0_25px_60px_-15px_rgba(28,5,118,0.3)] overflow-hidden`}
+            className={`creative-menu-card fixed top-[76px] sm:top-[82px] ${isRtl ? 'left-3 sm:left-6 md:left-12' : 'right-3 sm:right-6 md:right-12'} w-[calc(100vw-24px)] max-w-[330px] sm:max-w-[350px] bg-white rounded-3xl border-2 border-[#8c90f6]/40 p-3 sm:p-4 shadow-[0_25px_60px_-15px_rgba(28,5,118,0.3)] overflow-hidden flex flex-col max-h-[calc(100vh-90px)] animate-in zoom-in-95`}
           >
             {/* Header banner */}
-            <div className="flex items-center justify-between p-4 mb-4 rounded-2xl bg-gradient-to-r from-[#4221b6] to-[#5d35e0] text-white shadow-md">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-xl shadow-inner">
+            <div className="flex items-center justify-between p-2.5 mb-2.5 rounded-2xl bg-gradient-to-r from-[#4221b6] to-[#5d35e0] text-white shadow-sm shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-base shadow-inner shrink-0">
                   🦊
                 </div>
                 <div>
-                  <h3 className="font-bold text-base leading-tight tracking-tight">{t.brand}</h3>
-                  <p className="text-xs text-white/80 font-medium">Navigation rapide</p>
+                  <h3 className="font-black text-xs sm:text-sm leading-tight tracking-tight">{t.brand}</h3>
+                  <p className="text-[10px] text-white/80 font-medium">Navigation rapide</p>
                 </div>
               </div>
               <button
                 onClick={() => setIsMenuOpen(false)}
-                className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+                className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-transform hover:scale-105 active:scale-95 cursor-pointer shrink-0"
               >
-                <span className="material-symbols-outlined text-xl">close</span>
+                <span className="material-symbols-outlined text-base">close</span>
               </button>
             </div>
 
-            {/* Nav links */}
-            <div className="space-y-2 mb-5">
-              {navLinks.map((link) => (
-                <NavLink
-                  key={link.to}
-                  to={link.to}
-                  end={link.end}
-                  onClick={() => setIsMenuOpen(false)}
-                  className={({ isActive }) =>
-                    `creative-menu-item flex items-center justify-between px-4 py-3 rounded-2xl text-base font-bold transition-all border ${isActive
-                      ? 'bg-gradient-to-r from-[#4221b6] to-[#5d35e0] text-white border-[#4221b6] shadow-md scale-[1.01]'
-                      : 'bg-[#faf9f5] text-[#1c0576] hover:bg-[#e0d7ff]/50 hover:text-[#4221b6] border-slate-200/60'
-                    }`
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      <div className="flex items-center gap-3.5">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${isActive ? 'bg-white/20 text-[#b0fdb5]' : 'bg-[#e0d7ff] text-[#4221b6]'}`}>
-                          <span className="material-symbols-outlined text-2xl">{link.icon}</span>
+            {/* Scrollable container for links & details */}
+            <div className="overflow-y-auto flex-1 space-y-2 pr-0.5">
+              {/* Nav links */}
+              <div className="space-y-1.5">
+                {navLinks.map((link) => (
+                  <NavLink
+                    key={link.to}
+                    to={link.to}
+                    end={link.end}
+                    onClick={() => setIsMenuOpen(false)}
+                    className={({ isActive }) =>
+                      `creative-menu-item flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all border ${isActive
+                        ? 'bg-gradient-to-r from-[#4221b6] to-[#5d35e0] text-white border-[#4221b6] shadow-sm scale-[1.01]'
+                        : 'bg-[#faf9f5] text-[#1c0576] hover:bg-[#e0d7ff]/50 hover:text-[#4221b6] border-slate-200/60'
+                      }`
+                    }
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${isActive ? 'bg-white/20 text-[#b0fdb5]' : 'bg-[#e0d7ff] text-[#4221b6]'}`}>
+                            <span className="material-symbols-outlined text-base sm:text-lg">{link.icon}</span>
+                          </div>
+                          <span className="text-xs sm:text-sm font-extrabold tracking-tight truncate">{link.label}</span>
                         </div>
-                        <span className="text-sm font-extrabold tracking-tight">{link.label}</span>
-                      </div>
-                      <span className={`material-symbols-outlined text-xl shrink-0 ${isActive ? 'text-white' : 'text-[#4221b6]/60'}`}>
-                        {isRtl ? 'chevron_left' : 'chevron_right'}
-                      </span>
-                    </>
-                  )}
-                </NavLink>
-              ))}
-            </div>
-
-            {/* Quick Actions (Language & User Profile / Logout) */}
-            <div className="pt-4 border-t border-slate-100 flex flex-col gap-3">
-              {/* Language Selector in Menu */}
-              <div className="flex items-center justify-between p-3 rounded-2xl bg-[#faf9f5] border border-slate-200/60">
-                <span className="text-xs font-bold text-slate-700 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-lg text-[#4221b6]">language</span>
-                  {lang === 'ar' ? 'اللغة' : lang === 'en' ? 'Language' : 'Langue'}
-                </span>
-                <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
-                  <button
-                    onClick={() => setLang('fr')}
-                    className={`px-2.5 py-1 text-xs rounded-lg font-black transition-all cursor-pointer ${lang === 'fr' ? 'bg-[#b0fdb5] text-[#0d4013] shadow-sm scale-105' : 'text-slate-600 hover:text-[#4221b6]'}`}
-                  >
-                    FR
-                  </button>
-                  <button
-                    onClick={() => setLang('ar')}
-                    className={`px-2.5 py-1 text-xs rounded-lg font-black transition-all cursor-pointer ${lang === 'ar' ? 'bg-[#b0fdb5] text-[#0d4013] shadow-sm scale-105' : 'text-slate-600 hover:text-[#4221b6]'}`}
-                  >
-                    AR
-                  </button>
-                  <button
-                    onClick={() => setLang('en')}
-                    className={`px-2.5 py-1 text-xs rounded-lg font-black transition-all cursor-pointer ${lang === 'en' ? 'bg-[#b0fdb5] text-[#0d4013] shadow-sm scale-105' : 'text-slate-600 hover:text-[#4221b6]'}`}
-                  >
-                    EN
-                  </button>
-                </div>
+                        <span className={`material-symbols-outlined text-base shrink-0 ${isActive ? 'text-white' : 'text-[#4221b6]/60'}`}>
+                          {isRtl ? 'chevron_left' : 'chevron_right'}
+                        </span>
+                      </>
+                    )}
+                  </NavLink>
+                ))}
               </div>
 
-              {/* User Profile & Logout Section in Menu */}
-              {user ? (
-                <div className="flex flex-col gap-3 p-3.5 rounded-2xl bg-[#faf9f5] border border-slate-200/60">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[#4221b6] text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
-                      {user.parentName ? user.parentName.charAt(0).toUpperCase() : '👤'}
-                    </div>
-                    <div className="flex flex-col overflow-hidden text-left rtl:text-right min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-bold text-[#1c0576] truncate">{user.parentName || (user.email ? user.email.split('@')[0] : 'Compte')}</span>
-                        {formatRoleLabel(user.role || user.roles).map((rb, rIdx) => (
-                          <span
-                            key={rIdx}
-                            className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${rb.color}`}
-                          >
-                            {rb.label}
-                          </span>
-                        ))}
-                      </div>
-                      {user.email && (
-                        <span className="text-xs text-slate-500 font-medium truncate mt-0.5" title={user.email}>
-                          {user.email}
-                        </span>
-                      )}
-                      {user.childName && (
-                        <span className="text-[11px] text-slate-400 font-medium truncate">
-                          (Enfant: {user.childName})
-                        </span>
-                      )}
-                    </div>
+              {/* Quick Actions (Language & User Profile / Logout) */}
+              <div className="pt-2.5 border-t border-slate-100 flex flex-col gap-2">
+                {/* Language Selector in Menu */}
+                <div className="flex items-center justify-between p-2 rounded-xl bg-[#faf9f5] border border-slate-200/60">
+                  <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-base text-[#4221b6]">language</span>
+                    {lang === 'ar' ? 'اللغة' : lang === 'en' ? 'Language' : 'Langue'}
+                  </span>
+                  <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-slate-200 shadow-xs">
+                    <button
+                      onClick={() => setLang('fr')}
+                      className={`px-2 py-0.5 text-[10px] rounded-md font-black transition-all cursor-pointer ${lang === 'fr' ? 'bg-[#b0fdb5] text-[#0d4013] shadow-xs scale-105' : 'text-slate-600 hover:text-[#4221b6]'}`}
+                    >
+                      FR
+                    </button>
+                    <button
+                      onClick={() => setLang('ar')}
+                      className={`px-2 py-0.5 text-[10px] rounded-md font-black transition-all cursor-pointer ${lang === 'ar' ? 'bg-[#b0fdb5] text-[#0d4013] shadow-xs scale-105' : 'text-slate-600 hover:text-[#4221b6]'}`}
+                    >
+                      AR
+                    </button>
+                    <button
+                      onClick={() => setLang('en')}
+                      className={`px-2 py-0.5 text-[10px] rounded-md font-black transition-all cursor-pointer ${lang === 'en' ? 'bg-[#b0fdb5] text-[#0d4013] shadow-xs scale-105' : 'text-slate-600 hover:text-[#4221b6]'}`}
+                    >
+                      EN
+                    </button>
                   </div>
-                  <button
-                    onClick={() => {
-                      logoutUser();
-                      setIsMenuOpen(false);
-                    }}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs transition-colors border border-red-200 cursor-pointer shadow-sm"
-                  >
-                    <span className="material-symbols-outlined text-base">logout</span>
-                    <span>{lang === 'ar' ? 'تسجيل الخروج' : lang === 'en' ? 'Log out' : 'Déconnexion'}</span>
-                  </button>
                 </div>
-              ) : !isAdminPath ? (
-                <div className="grid grid-cols-2 gap-3 mt-1">
-                  <Link
-                    to="/auth?mode=login"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="flex items-center justify-center gap-1.5 py-3 rounded-2xl border-2 border-[#4221b6] text-[#4221b6] font-bold text-sm hover:bg-[#4221b6] hover:text-white transition-all shadow-sm cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-lg">login</span>
-                    {t.nav.login}
-                  </Link>
-                  <Link
-                    to="/auth?mode=signup"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="flex items-center justify-center gap-1.5 py-3 rounded-2xl bg-[#78fd7d] text-[#064e3b] font-bold text-sm hover:brightness-95 transition-all shadow-md cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-lg">person_add</span>
-                    {t.nav.signup}
-                  </Link>
-                </div>
-              ) : null}
+
+                {/* User Profile & Logout Section in Menu */}
+                {user ? (
+                  <div className="flex flex-col gap-2 p-2.5 rounded-xl bg-[#faf9f5] border border-slate-200/60">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-[#4221b6] text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
+                        {user.parentName ? user.parentName.charAt(0).toUpperCase() : '👤'}
+                      </div>
+                      <div className="flex flex-col overflow-hidden text-left rtl:text-right min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-bold text-[#1c0576] truncate">{user.parentName || (user.email ? user.email.split('@')[0] : 'Compte')}</span>
+                          {formatRoleLabel(user.role || user.roles).map((rb, rIdx) => (
+                            <span
+                              key={rIdx}
+                              className={`text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider ${rb.color}`}
+                            >
+                              {rb.label}
+                            </span>
+                          ))}
+                        </div>
+                        {user.email && (
+                          <span className="text-[10px] text-slate-500 font-medium truncate" title={user.email}>
+                            {user.email}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        logoutUser();
+                        setIsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 font-bold text-[11px] transition-colors border border-red-200 cursor-pointer shadow-xs"
+                    >
+                      <span className="material-symbols-outlined text-sm">logout</span>
+                      <span>{lang === 'ar' ? 'تسجيل الخروج' : lang === 'en' ? 'Log out' : 'Déconnexion'}</span>
+                    </button>
+                  </div>
+                ) : !isAdminPath ? (
+                  <div className="grid grid-cols-2 gap-2 mt-0.5">
+                    <Link
+                      to="/auth?mode=login"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="flex items-center justify-center gap-1 py-2 rounded-xl border border-[#4221b6] text-[#4221b6] font-bold text-xs hover:bg-[#4221b6] hover:text-white transition-all shadow-xs cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-sm">login</span>
+                      {t.nav.login}
+                    </Link>
+                    <Link
+                      to="/auth?mode=signup"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="flex items-center justify-center gap-1 py-2 rounded-xl bg-[#78fd7d] text-[#064e3b] font-bold text-xs hover:brightness-95 transition-all shadow-xs cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-sm">person_add</span>
+                      {t.nav.signup}
+                    </Link>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
         </>,

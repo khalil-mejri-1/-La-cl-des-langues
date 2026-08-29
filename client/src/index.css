@@ -286,22 +286,7 @@
   }
 }
 
-/* Hide "Notifications" title text in popover at <= 640px */
-@media (max-width: 640px) {
-  .hide-notif-title-640 {
-    display: none !important;
-  }
-}
 
-/* Notifications popover: shrink and stick to right edge at <= 425px */
-@media (max-width: 425px) {
-  .notif-popover-responsive {
-    width: calc(100vw - 24px) !important;
-    max-width: 340px !important;
-    right: 0 !important;
-    left: auto !important;
-  }
-}
 
 /* Creative Menu Overlay & Card Styles */
 .creative-menu-overlay {

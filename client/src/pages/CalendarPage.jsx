@@ -32,8 +32,18 @@ export default function CalendarPage() {
   ]);
 
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('fawran');
-  const [isSuccessOpen, setIsSuccessOpen] = useState(false);
+  const [isSuccessOpen, setIsSuccessOpen] = useState(false); // false | true (pack) | 'trial'
   const [isPackSelected, setIsPackSelected] = useState(true);
+  const [trialSession, setTrialSession] = useState({ day: '', time: '', isBooked: false });
+  const [copiedWhatsapp, setCopiedWhatsapp] = useState(false);
+
+  const handleCopyWhatsapp = (num) => {
+    try {
+      navigator.clipboard.writeText(num);
+      setCopiedWhatsapp(true);
+      setTimeout(() => setCopiedWhatsapp(false), 2500);
+    } catch {}
+  };
 
   // Modals state
   const [editingSectionModal, setEditingSectionModal] = useState(null); // { key, title }
@@ -208,6 +218,14 @@ export default function CalendarPage() {
     return `${dayNamesFr[dateObj.getDay()]} ${d} ${monthNamesFr[dateObj.getMonth()]} ${y}`;
   };
 
+  // Open scheduling modal specifically for Free Trial session
+  const openTrialModal = () => {
+    setActiveSessionIndex(0);
+    setModalSessionIndex('trial');
+    setModalStep('date');
+    setTempSelectedDate(trialSession.day || packSessions[0]?.day || '');
+  };
+
   // Open scheduling modal for specific session index
   const openSessionModal = (index) => {
     setActiveSessionIndex(index);
@@ -224,8 +242,22 @@ export default function CalendarPage() {
   };
 
   // Select Time inside Modal and finalize for this session
-  const handleSelectModalTime = (timeSlot) => {
-    if (!modalSessionIndex && modalSessionIndex !== 0) return;
+  const handleSelectModalTime = async (timeSlot) => {
+    if (modalSessionIndex === null) return;
+
+    if (modalSessionIndex === 'trial') {
+      const selectedDay = tempSelectedDate;
+      // Close the modal immediately in 0ms
+      setModalSessionIndex(null);
+      setTrialSession({ day: selectedDay, time: timeSlot, isBooked: true });
+      setPackSessions(prev => {
+        const updated = [...prev];
+        updated[0] = { ...updated[0], day: selectedDay, time: timeSlot };
+        return updated;
+      });
+      await handleConfirmTrialReservation(selectedDay, timeSlot);
+      return;
+    }
     
     // Check if slot taken on same date by another session in current pack
     const isTakenByOther = packSessions.some(
@@ -249,6 +281,7 @@ export default function CalendarPage() {
 
   // Helper: check if a time slot is already taken on tempSelectedDate by another session
   const isSlotTakenInModal = (timeSlot) => {
+    if (modalSessionIndex === 'trial') return null;
     return packSessions.find(
       (s, idx) => idx !== modalSessionIndex && s.day === tempSelectedDate && s.time === timeSlot
     );
@@ -329,6 +362,125 @@ export default function CalendarPage() {
     } finally {
       setSchedSaving(false);
       setScheduleModal(null);
+    }
+  };
+
+  // Submit Free Trial reservation directly to MongoDB & notify teacher/admin
+  const handleConfirmTrialReservation = async (chosenDay, chosenTime) => {
+    setBookingLoading(true);
+
+    const teacherObj = targetTeacher || (isMaitresse ? user : null) || (teachersList[0] || null);
+    const teacherName = teacherObj?.name || teacherObj?.parentName || teacherObj?.email?.split('@')[0] || (lang === 'ar' ? 'معلمة' : 'Maîtresse');
+    const teacherEmail = teacherObj?.email || '';
+    const teacherId = teacherObj?.id || teacherObj?._id || '';
+    const teacherSubject = teacherObj?.subject || teacherObj?.matiere || 'Français & Arabe';
+
+    const dayVal = chosenDay || trialSession.day || packSessions[0]?.day;
+    const timeVal = chosenTime || trialSession.time || packSessions[0]?.time;
+
+    const trialPayload = {
+      studentName: user?.childName || user?.parentName || (user?.email ? user.email.split('@')[0] : 'Élève'),
+      parentName: user?.parentName || (user?.email ? user.email.split('@')[0] : 'Parent'),
+      childName: user?.childName || '',
+      childAge: user?.childAge || '6 ans',
+      studentEmail: user?.email || '',
+      studentId: user?.id || user?._id || '',
+      teacherId: String(teacherId),
+      teacherName: teacherName,
+      teacherEmail: teacherEmail,
+      day: dayVal,
+      time: timeVal,
+      datetime: `${getFormattedDayLabel(dayVal) || dayVal}, ${timeVal}`,
+      subject: `${teacherSubject} (${lang === 'ar' ? 'حصة تجريبية مجانية 🎁' : 'Séance d\'essai 100% gratuite 🎁'})`,
+      paymentMethod: 'free_trial',
+      isTrial: true,
+      status: 'pending',
+    };
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/sessions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(trialPayload),
+      });
+
+      let savedSession = null;
+      if (res.ok) {
+        const data = await res.json();
+        savedSession = data?.session;
+      }
+      if (!savedSession) {
+        savedSession = {
+          id: String(Date.now()),
+          ...trialPayload,
+          createdAt: new Date().toISOString(),
+        };
+      }
+
+      window.dispatchEvent(new CustomEvent('session_created', { detail: savedSession }));
+
+      try {
+        if (typeof BroadcastChannel !== 'undefined') {
+          const bc = new BroadcastChannel('app_sessions_channel');
+          bc.postMessage({ type: 'NEW_SESSION_BOOKED', sessions: [savedSession], session: savedSession });
+          bc.close();
+        }
+      } catch {}
+
+      try {
+        localStorage.setItem('admin_latest_booked_session', JSON.stringify({
+          session: savedSession,
+          sessions: [savedSession],
+          timestamp: Date.now(),
+        }));
+      } catch {}
+
+      try {
+        const existing = JSON.parse(localStorage.getItem('admin_sessions_cache') || '[]');
+        localStorage.setItem('admin_sessions_cache', JSON.stringify([savedSession, ...existing]));
+      } catch {}
+
+      const studentDisplayName = user?.childName || user?.parentName || (user?.email ? user.email.split('@')[0] : 'Élève');
+      createNotification({
+        type: 'NEW_SESSION_REQUEST',
+        targetRoles: ['admin', 'maitresse'],
+        targetTeacherId: String(teacherId),
+        targetTeacherEmail: teacherEmail,
+        targetTeacherName: teacherName,
+        targetStudentId: String(user?.id || user?._id || ''),
+        targetStudentEmail: user?.email || '',
+        title: {
+          fr: `🎁 Nouvelle séance d'essai gratuite demandée !`,
+          ar: `🎁 طلب حصة تجريبية مجانية جديد !`,
+          en: `🎁 New Free Trial Session Request!`,
+        },
+        desc: {
+          fr: `L'élève ${studentDisplayName} a réservé sa séance d'essai gratuite pour le ${getFormattedDayLabel(dayVal) || dayVal} à ${timeVal} avec ${teacherName}.`,
+          ar: `قام التلميذ ${studentDisplayName} بحجز حصته التجريبية المجانية ليوم ${getFormattedDayLabel(dayVal) || dayVal} الساعة ${timeVal} مع المعلمة ${teacherName}.`,
+          en: `Student ${studentDisplayName} booked a free trial session for ${dayVal} at ${timeVal} with ${teacherName}.`,
+        },
+        message: {
+          fr: `L'élève ${studentDisplayName} a réservé sa séance d'essai gratuite pour le ${getFormattedDayLabel(dayVal) || dayVal} à ${timeVal} avec ${teacherName}.`,
+          ar: `قام التلميذ ${studentDisplayName} بحجز حصته التجريبية المجانية ليوم ${getFormattedDayLabel(dayVal) || dayVal} الساعة ${timeVal} مع المعلمة ${teacherName}.`,
+          en: `Student ${studentDisplayName} booked a free trial session for ${dayVal} at ${timeVal} with ${teacherName}.`,
+        },
+        icon: 'card_giftcard',
+        iconBg: 'bg-emerald-100 text-emerald-700',
+        link: '/admin',
+        meta: {
+          sessionId: savedSession?.id || savedSession?._id,
+          studentName: studentDisplayName,
+          teacherName: teacherName,
+          isTrial: true,
+        },
+      });
+
+      setTrialSession({ day: dayVal, time: timeVal, isBooked: true });
+      setIsSuccessOpen('trial');
+    } catch (err) {
+      console.error('Erreur réservation séance essai:', err);
+    } finally {
+      setBookingLoading(false);
     }
   };
 
@@ -623,23 +775,37 @@ export default function CalendarPage() {
                 </p>
               </div>
 
+              {trialSession.day && trialSession.time && (
+                <div className="w-full p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-left rtl:text-right flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-emerald-600 text-lg">event_available</span>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-500 block uppercase">
+                        {lang === 'ar' ? 'الموعد المحدد للحصة' : 'Rendez-vous choisi'}
+                      </span>
+                      <span className="text-xs font-black text-slate-800">
+                        {getFormattedDayLabel(trialSession.day)} à {trialSession.time}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 text-[10px] font-black">
+                    ✓
+                  </span>
+                </div>
+              )}
+
               <button
                 type="button"
-                onClick={() => setIsPackSelected(!isPackSelected)}
-                className={`w-full py-3.5 px-6 rounded-2xl font-black text-xs sm:text-sm transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg ${
-                  isPackSelected
-                    ? 'bg-[#059669] text-white hover:bg-[#047857] shadow-emerald-200'
-                    : 'bg-[#4221b6] text-white hover:bg-[#341a99] shadow-indigo-200'
-                }`}
+                onClick={openTrialModal}
+                className="w-full py-3.5 px-6 rounded-2xl font-black text-xs sm:text-sm transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg bg-[#059669] hover:bg-[#047857] text-white shadow-emerald-200 hover:scale-105 active:scale-95"
               >
                 <span className="material-symbols-outlined text-lg">
-                  {isPackSelected ? 'check_circle' : 'bolt'}
+                  calendar_month
                 </span>
                 <span>
-                  {isPackSelected
-                    ? (t.calendarPage?.packOffer?.activeTag || (lang === 'fr' ? 'Séance d\'essai sélectionnée ✓' : lang === 'ar' ? 'تم اختيار الجلسة ✓' : 'Trial Selected ✓'))
-                    : (t.calendarPage?.packOffer?.selectBtn || (lang === 'fr' ? 'Réserver ma séance gratuite' : lang === 'ar' ? 'احجز جلستك المجانية' : 'Book My Free Trial'))
-                  }
+                  {trialSession.day && trialSession.time
+                    ? (lang === 'fr' ? 'Séance d\'essai sélectionnée ✓' : lang === 'ar' ? 'تم اختيار موعد الجلسة ✓' : 'Trial Selected ✓')
+                    : (t.calendarPage?.packOffer?.selectBtn || (lang === 'fr' ? 'Séance d\'essai sélectionnée' : lang === 'ar' ? 'احجز جلستك المجانية' : 'Book My Free Trial'))}
                 </span>
               </button>
             </div>
@@ -745,6 +911,76 @@ export default function CalendarPage() {
         </div>
       </section>
 
+      {/* 3.5 Pack Pricing Banner */}
+      <section className="bg-gradient-to-r from-[#1c0576] via-[#4221b6] to-[#5d35e0] rounded-2xl p-5 sm:p-6 border-2 border-[#8c90f6]/60 shadow-xl relative overflow-hidden">
+        {/* Decorative glow */}
+        <div className="absolute -top-10 -left-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
+        <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-[#78fd7d]/15 rounded-full blur-2xl pointer-events-none"></div>
+
+        {isAdmin && (
+          <button
+            onClick={() => setEditingSectionModal({ key: 'calendarPack', title: lang === 'ar' ? 'تعديل سعر الباقة' : 'Modifier le tarif du pack' })}
+            className="absolute top-3 right-3 z-20 flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-full font-black text-xs shadow-md hover:scale-105 transition-all cursor-pointer border border-white/40 backdrop-blur-sm"
+          >
+            <span className="material-symbols-outlined text-sm">edit</span>
+            <span>{lang === 'ar' ? 'تعديل السعر' : 'Modifier le tarif'}</span>
+          </button>
+        )}
+
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-5 relative z-10">
+          {/* Left: Title & description */}
+          <div className="flex items-center gap-4 text-left rtl:text-right">
+            <div className="w-13 h-13 rounded-2xl bg-white/15 backdrop-blur-md flex items-center justify-center text-3xl shadow-inner border border-white/20 shrink-0">
+              💳
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-white font-extrabold text-base sm:text-lg leading-tight">
+                  {t.calendarPage?.packOffer?.priceTitle || (lang === 'ar' ? 'سعر باقة الـ 4 حصص' : 'Tarif du Pack 4 Séances')}
+                </h3>
+                <span className="px-2.5 py-0.5 rounded-full bg-[#78fd7d] text-[#064e3b] text-[10px] font-black tracking-wide uppercase">
+                  {t.calendarPage?.packOffer?.priceBadge || (lang === 'ar' ? 'عرض مناسب' : 'Tarif Avantageux')}
+                </span>
+              </div>
+              <p className="text-white/80 text-xs font-medium leading-relaxed">
+                {t.calendarPage?.packOffer?.priceDesc || (lang === 'ar' ? 'سعر باقة الـ 4 حصص : 80 ريال قطري (أو 19 يورو للحصة الواحدة)' : 'Le prix des 4 séances : 80 Riyals (soit 19€ la séance)')}
+              </p>
+            </div>
+          </div>
+
+          {/* Right: Price pills */}
+          <div className="flex items-center gap-3 flex-wrap justify-center sm:justify-end shrink-0">
+            {/* QAR Price */}
+            <div className="flex flex-col items-center bg-white/15 backdrop-blur-md rounded-2xl px-5 py-3 border border-white/25 shadow-lg min-w-[110px] text-center">
+              <span className="text-[10px] font-bold text-white/70 uppercase tracking-wider mb-1">
+                {lang === 'ar' ? 'إجمالي الباقة' : 'Total pack'}
+              </span>
+              <span className="text-2xl sm:text-3xl font-black text-[#78fd7d] leading-none" dir="ltr">
+                {t.calendarPage?.packOffer?.packPriceQar || '80 Riyals'}
+              </span>
+              <span className="text-[10px] text-white/60 font-bold mt-1">
+                {lang === 'ar' ? '4 حصص كاملة' : '4 séances incluses'}
+              </span>
+            </div>
+
+            <div className="text-white/40 font-black text-xl hidden sm:block">/</div>
+
+            {/* EUR Price per session */}
+            <div className="flex flex-col items-center bg-white/15 backdrop-blur-md rounded-2xl px-5 py-3 border border-white/25 shadow-lg min-w-[110px] text-center">
+              <span className="text-[10px] font-bold text-white/70 uppercase tracking-wider mb-1">
+                {lang === 'ar' ? 'سعر الحصة' : 'Par séance'}
+              </span>
+              <span className="text-2xl sm:text-3xl font-black text-yellow-300 leading-none" dir="ltr">
+                {t.calendarPage?.packOffer?.packPriceEur || '19€'}
+              </span>
+              <span className="text-[10px] text-white/60 font-bold mt-1">
+                {lang === 'ar' ? 'بالتحويل البنكي' : 'par virement'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* 4. Payment Method Section */}
       <section className="bg-surface-container-low rounded-2xl p-6 md:p-8 soft-card-shadow border border-[#C5CAE9] relative">
         {isAdmin && (
@@ -823,6 +1059,90 @@ export default function CalendarPage() {
         </div>
       </section>
 
+      {/* 4.5. Section Assistance & Confirmation WhatsApp sous Mode de paiement */}
+      <section className="bg-gradient-to-br from-emerald-50/90 via-teal-50/40 to-white rounded-2xl p-6 md:p-7 border-2 border-emerald-300 shadow-md relative overflow-hidden">
+        {/* Glow decoration */}
+        <div className="absolute -top-12 -right-12 w-48 h-48 bg-emerald-400/15 rounded-full blur-2xl pointer-events-none"></div>
+
+        {isAdmin && (
+          <button
+            onClick={() => setEditingSectionModal({ key: 'calendarStep3', title: lang === 'ar' ? 'تعديل قسم الواتساب والدفع' : 'Modifier WhatsApp & Paiement' })}
+            className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-full font-black text-xs shadow-md hover:scale-105 transition-all cursor-pointer border-2 border-white/50"
+            title={lang === 'ar' ? 'تعديل رقم ومعلومات الواتساب' : 'Modifier les infos WhatsApp'}
+          >
+            <span className="material-symbols-outlined text-sm">edit</span>
+            <span>{lang === 'ar' ? 'تعديل الواتساب' : 'Modifier WhatsApp'}</span>
+          </button>
+        )}
+
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5 relative z-10">
+          <div className="flex items-start gap-4">
+            <div className="w-13 h-13 rounded-2xl bg-[#25D366] text-white flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/25">
+              <svg className="w-7 h-7 fill-current" viewBox="0 0 24 24">
+                <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2zm.01 1.67c2.2 0 4.26.86 5.82 2.42a8.225 8.225 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.196 8.196 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24zm4.52 11.66c-.25-.12-1.47-.72-1.7-.81-.23-.08-.39-.12-.56.12-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.12-1.05-.39-2-1.23-.74-.66-1.24-1.47-1.39-1.72-.14-.25-.02-.38.11-.51.11-.11.25-.29.37-.43.12-.15.17-.25.25-.42.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.49-.4-.42-.56-.43h-.47c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.12.17 1.77 2.71 4.29 3.8 2.52 1.08 2.52.72 2.97.68.46-.05 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.06-.11-.23-.17-.48-.3z" />
+              </svg>
+            </div>
+
+            <div className="space-y-1.5 pr-6 rtl:pr-0 rtl:pl-6">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-extrabold text-base sm:text-lg text-slate-900">
+                  {t.calendarPage?.whatsappTitle || (lang === 'ar' ? 'تأكيد الدفع والمساعدة الفورية عبر الواتساب' : 'Confirmation & Assistance WhatsApp')}
+                </h3>
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black tracking-wide uppercase flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+                  <span>WhatsApp Direct</span>
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 font-medium leading-relaxed max-w-xl">
+                {t.calendarPage?.whatsappDesc || (lang === 'ar' ? 'لتأكيد عملية الدفع أو إرسال إيصال التحويل أو لأي استفسار، تواصل معنا مباشرة عبر الواتساب:' : 'Pour confirmer votre paiement, envoyer votre reçu de virement ou pour toute question, contactez-nous directement sur WhatsApp :')}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-start md:justify-end">
+            {/* Phone Number Pill with Copy */}
+            <div className="flex items-center gap-2 bg-white px-3.5 py-2.5 rounded-xl border border-emerald-200 shadow-sm">
+              <span className="material-symbols-outlined text-emerald-600 text-base">phone_iphone</span>
+              <span className="font-black text-slate-900 text-xs sm:text-sm tracking-wider select-all font-mono" dir="ltr">
+                {t.calendarPage?.whatsappNumber || '00974 33069770'}
+              </span>
+              <button
+                type="button"
+                onClick={() => handleCopyWhatsapp(t.calendarPage?.whatsappNumber || '00974 33069770')}
+                className="p-1 hover:bg-emerald-50 rounded-lg text-slate-400 hover:text-emerald-700 transition cursor-pointer flex items-center gap-1"
+                title={lang === 'ar' ? 'نسخ الرقم' : 'Copier le numéro'}
+              >
+                <span className="material-symbols-outlined text-sm text-emerald-600">
+                  {copiedWhatsapp ? 'check' : 'content_copy'}
+                </span>
+                {copiedWhatsapp && (
+                  <span className="text-[10px] font-bold text-emerald-600">
+                    {lang === 'ar' ? 'تم النسخ' : 'Copié !'}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* Direct WhatsApp Action Link */}
+            <a
+              href={`https://wa.me/${(t.calendarPage?.whatsappNumber || '00974 33069770').replace(/\D/g, '').replace(/^00/, '')}?text=${encodeURIComponent(
+                lang === 'ar'
+                  ? 'مرحباً، أود تأكيد الحجز وإرسال إيصال الدفع.'
+                  : 'Bonjour, je souhaite confirmer ma réservation et envoyer le reçu de paiement.'
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-5 py-2.5 rounded-xl bg-[#25D366] hover:bg-[#1EBE5D] text-white font-black text-xs shadow-md hover:shadow-emerald-200 hover:scale-105 transition-all flex items-center gap-2 cursor-pointer shrink-0"
+            >
+              <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
+                <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2zm.01 1.67c2.2 0 4.26.86 5.82 2.42a8.225 8.225 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.196 8.196 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24zm4.52 11.66c-.25-.12-1.47-.72-1.7-.81-.23-.08-.39-.12-.56.12-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.12-1.05-.39-2-1.23-.74-.66-1.24-1.47-1.39-1.72-.14-.25-.02-.38.11-.51.11-.11.25-.29.37-.43.12-.15.17-.25.25-.42.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.49-.4-.42-.56-.43h-.47c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.12.17 1.77 2.71 4.29 3.8 2.52 1.08 2.52.72 2.97.68.46-.05 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.06-.11-.23-.17-.48-.3z" />
+              </svg>
+              <span>{t.calendarPage?.whatsappButton || (lang === 'ar' ? 'مراسلة عبر الواتساب' : 'Contacter sur WhatsApp')}</span>
+            </a>
+          </div>
+        </div>
+      </section>
+
       {/* 5. CONFIRMATION BUTTON - SHOWN WHEN ALL 4 SESSIONS ARE SCHEDULED */}
       <section className="flex flex-col items-center justify-center mt-4">
         {packSessions.every(s => s.day && s.time) ? (
@@ -875,17 +1195,19 @@ export default function CalendarPage() {
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-[#4221b6] text-white flex items-center justify-center font-black text-lg shadow-md">
-                  {modalSessionIndex + 1}
+                <div className="w-10 h-10 rounded-2xl bg-[#4221b6] text-white flex items-center justify-center font-black text-lg shadow-md shrink-0">
+                  {modalSessionIndex === 'trial' ? '🎁' : modalSessionIndex + 1}
                 </div>
                 <div>
                   <h3 className="text-lg font-black text-[#1c0576]">
-                    {lang === 'ar' ? `تحديد موعد الحصة رقم ${modalSessionIndex + 1}` : `Planifier la Séance ${modalSessionIndex + 1}`}
+                    {modalSessionIndex === 'trial'
+                      ? (lang === 'ar' ? 'حجز موعد الحصة التجريبية المجانية' : 'Planifier votre Séance d\'Essai Gratuite')
+                      : (lang === 'ar' ? `تحديد موعد الحصة رقم ${modalSessionIndex + 1}` : `Planifier la Séance ${modalSessionIndex + 1}`)}
                   </h3>
                   <p className="text-xs text-slate-500 font-medium">
                     {modalStep === 'date'
-                      ? (lang === 'ar' ? 'الخطوة 1: اختر يوماً من تقويم الشهر' : 'Étape 1 : Choisissez une date du calendrier')
-                      : (lang === 'ar' ? `الخطوة 2: اختر الساعة ليوم (${getFormattedDayLabel(tempSelectedDate)})` : `Étape 2 : Choisissez l'heure (${tempSelectedDate})`)}
+                      ? (lang === 'ar' ? 'الخطوة 1: اختر يوماً من تقويم المعلمة' : 'Étape 1 : Choisissez une date du calendrier de la maîtresse')
+                      : (lang === 'ar' ? `الخطوة 2: اختر الساعة ليوم (${getFormattedDayLabel(tempSelectedDate)})` : `Étape 2 : Choisissez l'heure (${getFormattedDayLabel(tempSelectedDate)})`)}
                   </p>
                 </div>
               </div>
@@ -1095,32 +1417,52 @@ export default function CalendarPage() {
         <div className="fixed inset-0 bg-surface/95 z-50 flex flex-col items-center justify-center p-4 sm:p-6 backdrop-blur-sm overflow-y-auto">
           <div className="text-center space-y-6 max-w-lg bg-white p-6 sm:p-8 rounded-3xl border-2 border-[#4221b6] shadow-2xl animate-in zoom-in-95">
             <div className="w-20 h-20 mx-auto rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-4xl shadow-inner animate-bounce">
-              ✓
+              {isSuccessOpen === 'trial' ? '🎁' : '✓'}
             </div>
             
             <h2 className="text-2xl sm:text-3xl font-black text-[#1c0576]">
-              {lang === 'ar' ? 'تم تأكيد حجز الباقة (4 حصص) بنجاح ! 🎉' : 'Réservation du Pack (4 séances) réussie ! 🎉'}
+              {isSuccessOpen === 'trial'
+                ? (lang === 'ar' ? 'تم إرسال طلب الحصة التجريبية المجانية بنجاح ! 🎉' : 'Demande de Séance d\'Essai Envoyée ! 🎉')
+                : (lang === 'ar' ? 'تم تأكيد حجز الباقة (4 حصص) بنجاح ! 🎉' : 'Réservation du Pack (4 séances) réussie ! 🎉')}
             </h2>
             
             <p className="text-xs sm:text-sm text-slate-600 font-medium">
-              {lang === 'ar'
-                ? `تم تسجيل كافة مواعيد الحصص الأربع بنجاح مع المعلمة ${targetTeacher?.name || targetTeacher?.parentName || 'المعلمة'}:`
-                : `Vos 4 séances ont été enregistrées avec succès auprès de ${targetTeacher?.name || targetTeacher?.parentName || 'votre maîtresse'} :`}
+              {isSuccessOpen === 'trial'
+                ? (lang === 'ar'
+                    ? `تم إرسال طلب موعد حصتك التجريبية المجانية بنجاح للأستاذة ${targetTeacher?.name || targetTeacher?.parentName || 'المعلمة'}:`
+                    : `Votre demande de séance d'essai 100% gratuite a été transmise avec succès à ${targetTeacher?.name || targetTeacher?.parentName || 'votre maîtresse'} :`)
+                : (lang === 'ar'
+                    ? `تم تسجيل كافة مواعيد الحصص الأربع بنجاح مع المعلمة ${targetTeacher?.name || targetTeacher?.parentName || 'المعلمة'}:`
+                    : `Vos 4 séances ont été enregistrées avec succès auprès de ${targetTeacher?.name || targetTeacher?.parentName || 'votre maîtresse'} :`)}
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left rtl:text-right pt-1">
-              {packSessions.map((s, i) => (
-                <div key={i} className="p-3 bg-[#faf9f5] border border-slate-200 rounded-xl flex items-center gap-2.5">
-                  <span className="w-6 h-6 rounded-full bg-[#4221b6] text-white flex items-center justify-center text-xs font-black shrink-0">
-                    {i + 1}
+            {isSuccessOpen === 'trial' ? (
+              <div className="p-4 bg-emerald-50 border-2 border-emerald-300 rounded-2xl flex items-center justify-center gap-3">
+                <span className="material-symbols-outlined text-emerald-600 text-2xl">event_available</span>
+                <div className="text-left rtl:text-right">
+                  <span className="text-xs sm:text-sm font-black text-emerald-900 block">
+                    {getFormattedDayLabel(trialSession.day) || trialSession.day}
                   </span>
-                  <div>
-                    <span className="text-xs font-black text-slate-900 block">{getFormattedDayLabel(s.day) || s.day}</span>
-                    <span className="text-[11px] font-bold text-[#4221b6]">{s.time}</span>
-                  </div>
+                  <span className="text-xs font-extrabold text-emerald-700">
+                    {lang === 'ar' ? `الساعة ${trialSession.time} • مجانية 100%` : `À ${trialSession.time} • 100% Gratuite`}
+                  </span>
                 </div>
-              ))}
-            </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left rtl:text-right pt-1">
+                {packSessions.map((s, i) => (
+                  <div key={i} className="p-3 bg-[#faf9f5] border border-slate-200 rounded-xl flex items-center gap-2.5">
+                    <span className="w-6 h-6 rounded-full bg-[#4221b6] text-white flex items-center justify-center text-xs font-black shrink-0">
+                      {i + 1}
+                    </span>
+                    <div>
+                      <span className="text-xs font-black text-slate-900 block">{getFormattedDayLabel(s.day) || s.day}</span>
+                      <span className="text-[11px] font-bold text-[#4221b6]">{s.time}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <button
               onClick={() => { setIsSuccessOpen(false); navigate('/dashboard'); }}

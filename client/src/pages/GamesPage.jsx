@@ -96,20 +96,38 @@ export default function GamesPage() {
     return false;
   })();
 
-  // Games state from localStorage (only sentence-completion-quiz)
+  // Games state from localStorage merged with INITIAL_GAMES_LIST so all games are always available
   const [games, setGames] = useState(() => {
     try {
       const saved = localStorage.getItem('custom_games_list');
       if (saved) {
         const parsed = JSON.parse(saved);
-        const filtered = parsed.filter((g) => g.id === 'sentence-completion-quiz');
-        if (filtered.length > 0) return filtered;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Merge saved customized attributes with INITIAL_GAMES_LIST so all games are always present
+          const merged = INITIAL_GAMES_LIST.map((defaultGame) => {
+            const custom = parsed.find((g) => g && g.id === defaultGame.id);
+            return custom ? { ...defaultGame, ...custom } : defaultGame;
+          });
+          // Also include any extra custom games that might have been added
+          const extraGames = parsed.filter(
+            (p) => p && p.id && !INITIAL_GAMES_LIST.some((d) => d.id === p.id)
+          );
+          return [...merged, ...extraGames];
+        }
       }
       return INITIAL_GAMES_LIST;
     } catch {
       return INITIAL_GAMES_LIST;
     }
   });
+
+  // Ensure localStorage is updated with all games
+  useEffect(() => {
+    try {
+      localStorage.setItem('custom_games_list', JSON.stringify(games));
+    } catch {}
+  }, [games]);
+
 
 
   const [activeCategory, setActiveCategory] = useState('all');

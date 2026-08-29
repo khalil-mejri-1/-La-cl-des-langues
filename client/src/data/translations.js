@@ -303,7 +303,12 @@ export const translations = {
           "1ère séance 100% offerte"
         ],
         selectBtn: "Réserver ma séance d'essai gratuite",
-        activeTag: "Séance d'essai sélectionnée ✓"
+        activeTag: "Séance d'essai sélectionnée ✓",
+        priceTitle: "Tarif du Pack 4 Séances",
+        priceDesc: "Le prix des 4 séances : 80 Riyals (soit 19€ la séance)",
+        packPriceQar: "80 Riyals",
+        packPriceEur: "19€ / séance",
+        priceBadge: "Tarif Avantageux"
       },
       step1Title: "Choisis un jour",
       availableDays: ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"],
@@ -314,6 +319,10 @@ export const translations = {
       paymentMethods: [
         { id: 'fawran', name: 'Payement virement ou Fawran (فوراً)', desc: 'Paiement immédiat par virement bancaire ou via le service Fawran', icon: 'bolt', badge: 'Rapide' }
       ],
+      whatsappNumber: "00974 33069770",
+      whatsappTitle: "Confirmation & Assistance WhatsApp",
+      whatsappDesc: "Pour confirmer votre paiement, envoyer votre reçu de virement ou pour toute question, contactez-nous directement sur WhatsApp :",
+      whatsappButton: "Contacter sur WhatsApp",
       confirmButton: "Confirmer la réservation",
       eagerText: "On a hâte de te voir !",
       successTitle: "Super !",
@@ -689,7 +698,12 @@ export const translations = {
           "حصة أولى 100% مجانية"
         ],
         selectBtn: "احجز جلستك التجريبية المجانية",
-        activeTag: "تم اختيار الجلسة التجريبية ✓"
+        activeTag: "تم اختيار الجلسة التجريبية ✓",
+        priceTitle: "سعر باقة الـ 4 حصص",
+        priceDesc: "سعر باقة الـ 4 حصص : 80 ريال قطري (أو 19 يورو للحصة الواحدة)",
+        packPriceQar: "80 ريال قطري",
+        packPriceEur: "19 يورو / للحصة",
+        priceBadge: "عرض مناسب ومميز"
       },
       step1Title: "اختر يوماً",
       availableDays: ["الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"],
@@ -700,6 +714,10 @@ export const translations = {
       paymentMethods: [
         { id: 'fawran', name: 'دفع عبر التحويل أو فوراً (Payement virement ou Fawran)', desc: 'دفع فوري عبر التحويل البنكي أو تطبيق فوراً السريع', icon: 'bolt', badge: 'فوري' }
       ],
+      whatsappNumber: "00974 33069770",
+      whatsappTitle: "تأكيد الدفع والمساعدة الفورية عبر الواتساب",
+      whatsappDesc: "لتأكيد عملية الدفع أو إرسال إشعار التحويل البنكي أو لأي استفسار، تواصل معنا مباشرة عبر الواتساب:",
+      whatsappButton: "مراسلة عبر الواتساب",
       confirmButton: "تأكيد الحجز",
       eagerText: "نحن متأملون لرؤيتك قريباً!",
       successTitle: "رائع جداً!",
@@ -1080,7 +1098,12 @@ export const translations = {
           "1st session 100% free"
         ],
         selectBtn: "Book My Free Trial Session",
-        activeTag: "Free Trial Selected ✓"
+        activeTag: "Free Trial Selected ✓",
+        priceTitle: "4-Session Pack Pricing",
+        priceDesc: "Price for 4 sessions: 80 Riyals (or 19€ per session)",
+        packPriceQar: "80 Riyals",
+        packPriceEur: "19€ / session",
+        priceBadge: "Best Value"
       },
       step1Title: "Choose a Day",
       availableDays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
@@ -1091,6 +1114,10 @@ export const translations = {
       paymentMethods: [
         { id: 'fawran', name: 'Bank Transfer or Fawran (فوراً)', desc: 'Instant payment via bank transfer or Fawran service', icon: 'bolt', badge: 'Fast' }
       ],
+      whatsappNumber: "00974 33069770",
+      whatsappTitle: "WhatsApp Confirmation & Support",
+      whatsappDesc: "To confirm your payment, send your transfer receipt, or for any questions, contact us directly on WhatsApp:",
+      whatsappButton: "Chat on WhatsApp",
       confirmButton: "Confirm Booking",
       eagerText: "We can't wait to see you!",
       successTitle: "Awesome!",

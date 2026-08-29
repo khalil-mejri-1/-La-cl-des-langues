@@ -217,11 +217,26 @@ export function LanguageProvider({ children }) {
     ...(customSections?.calendarStep1?.[lang] || {}),
     ...(customSections?.calendarStep2?.[lang] || {}),
     ...(customSections?.calendarStep3?.[lang] || {}),
+    whatsappNumber:
+      customSections?.calendarStep3?.whatsappNumber ||
+      customSections?.calendarStep3?.[lang]?.whatsappNumber ||
+      baseTranslations.calendarPage?.whatsappNumber ||
+      "00974 33069770",
     availableDays: formattedAvailableDays,
     timeSlots: formattedTimeSlots,
     packOffer: {
       ...baseTranslations.calendarPage?.packOffer,
       ...(customSections?.calendarPack?.[lang] || {}),
+      packPriceQar:
+        customSections?.calendarPack?.packPriceQar ||
+        customSections?.calendarPack?.[lang]?.packPriceQar ||
+        baseTranslations.calendarPage?.packOffer?.packPriceQar ||
+        (lang === 'ar' ? '80 ريال قطري' : '80 Riyals'),
+      packPriceEur:
+        customSections?.calendarPack?.packPriceEur ||
+        customSections?.calendarPack?.[lang]?.packPriceEur ||
+        baseTranslations.calendarPage?.packOffer?.packPriceEur ||
+        (lang === 'ar' ? '19 يورو / للحصة' : '19€ / séance'),
     },
   };
 

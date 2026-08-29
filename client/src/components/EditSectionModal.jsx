@@ -140,7 +140,11 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
     }
 
     if (sectionKey === 'calendarPack') {
+      const defaultPriceQar = existing.packPriceQar || existing.fr?.packPriceQar || existing.ar?.packPriceQar || "80 Riyals";
+      const defaultPriceEur = existing.packPriceEur || existing.fr?.packPriceEur || existing.ar?.packPriceEur || "19€ / séance";
       return {
+        packPriceQar: defaultPriceQar,
+        packPriceEur: defaultPriceEur,
         fr: {
           badge: existing.fr?.badge || "OFFRE SANS ENGAGEMENT",
           freeTag: existing.fr?.freeTag || "100% Gratuite !",
@@ -148,6 +152,11 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
           subtitle: existing.fr?.subtitle || "Offrez à votre enfant une première leçon individuelle d'essai sans aucun engagement pour découvrir notre méthode d'apprentissage ludique !",
           selectBtn: existing.fr?.selectBtn || "Réserver ma séance d'essai gratuite",
           activeTag: existing.fr?.activeTag || "Séance d'essai sélectionnée ✓",
+          priceTitle: existing.fr?.priceTitle || "Tarif du Pack 4 Séances",
+          priceDesc: existing.fr?.priceDesc || "Le prix des 4 séances : 80 Riyals (soit 19€ la séance)",
+          priceBadge: existing.fr?.priceBadge || "Tarif Avantageux",
+          packPriceQar: defaultPriceQar,
+          packPriceEur: defaultPriceEur,
         },
         ar: {
           badge: existing.ar?.badge || "عرض التّجربة بدون التزام",
@@ -156,6 +165,11 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
           subtitle: existing.ar?.subtitle || "امنح طفلك فرصة اكتشاف أسلوبنا التعلمي التفاعلي والممتع من خلال درس تجريبي فردي ومجاني بالكامل بدون أي التزام!",
           selectBtn: existing.ar?.selectBtn || "احجز جلستك التجريبية المجانية",
           activeTag: existing.ar?.activeTag || "تم اختيار الجلسة التجريبية ✓",
+          priceTitle: existing.ar?.priceTitle || "سعر باقة الـ 4 حصص",
+          priceDesc: existing.ar?.priceDesc || "سعر باقة الـ 4 حصص : 80 ريال قطري (أو 19 يورو للحصة الواحدة)",
+          priceBadge: existing.ar?.priceBadge || "عرض مناسب ومميز",
+          packPriceQar: defaultPriceQar,
+          packPriceEur: defaultPriceEur,
         },
         en: {
           badge: existing.en?.badge || "NO COMMITMENT OFFER",
@@ -164,6 +178,11 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
           subtitle: existing.en?.subtitle || "Give your child a first individual trial lesson with zero commitment to discover our fun learning method!",
           selectBtn: existing.en?.selectBtn || "Book My Free Trial Session",
           activeTag: existing.en?.activeTag || "Free Trial Selected ✓",
+          priceTitle: existing.en?.priceTitle || "4-Session Pack Pricing",
+          priceDesc: existing.en?.priceDesc || "Price for 4 sessions: 80 Riyals (or 19€ per session)",
+          priceBadge: existing.en?.priceBadge || "Best Value",
+          packPriceQar: defaultPriceQar,
+          packPriceEur: defaultPriceEur,
         },
       };
     }
@@ -187,18 +206,32 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
     }
 
     if (sectionKey === 'calendarStep3') {
+      const defaultWhatsappNum = existing.whatsappNumber || existing.fr?.whatsappNumber || existing.ar?.whatsappNumber || "00974 33069770";
       return {
+        whatsappNumber: defaultWhatsappNum,
         fr: {
           step3Title: existing.fr?.step3Title || "Mode de paiement",
           confirmButton: existing.fr?.confirmButton || "Confirmer la réservation",
+          whatsappTitle: existing.fr?.whatsappTitle || "Confirmation & Assistance WhatsApp",
+          whatsappDesc: existing.fr?.whatsappDesc || "Pour confirmer votre paiement, envoyer votre reçu de virement ou pour toute question, contactez-nous directement sur WhatsApp :",
+          whatsappButton: existing.fr?.whatsappButton || "Contacter sur WhatsApp",
+          whatsappNumber: defaultWhatsappNum,
         },
         ar: {
-          step3Title: existing.ar?.step3Title || "طريقة الدفع المؤمّنة",
-          confirmButton: existing.ar?.confirmButton || "تأكيد وتثبيت الحجز",
+          step3Title: existing.ar?.step3Title || "طريقة الدفع",
+          confirmButton: existing.ar?.confirmButton || "تأكيد الحجز",
+          whatsappTitle: existing.ar?.whatsappTitle || "تأكيد الدفع والمساعدة الفورية عبر الواتساب",
+          whatsappDesc: existing.ar?.whatsappDesc || "لتأكيد عملية الدفع أو إرسال إشعار التحويل البنكي أو لأي استفسار، تواصل معنا مباشرة عبر الواتساب:",
+          whatsappButton: existing.ar?.whatsappButton || "مراسلة عبر الواتساب",
+          whatsappNumber: defaultWhatsappNum,
         },
         en: {
           step3Title: existing.en?.step3Title || "Payment Method",
           confirmButton: existing.en?.confirmButton || "Confirm Booking",
+          whatsappTitle: existing.en?.whatsappTitle || "WhatsApp Confirmation & Support",
+          whatsappDesc: existing.en?.whatsappDesc || "To confirm your payment, send your transfer receipt, or for any questions, contact us directly on WhatsApp:",
+          whatsappButton: existing.en?.whatsappButton || "Chat on WhatsApp",
+          whatsappNumber: defaultWhatsappNum,
         },
       };
     }
@@ -1809,9 +1842,90 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
             {/* Calendar Pack Offer Form */}
             {sectionKey === 'calendarPack' && (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-4 bg-indigo-50/80 rounded-2xl border-2 border-indigo-200 space-y-3">
+                  <div className="flex items-center gap-2 text-indigo-900 font-extrabold text-xs">
+                    <span className="material-symbols-outlined text-base text-indigo-600">payments</span>
+                    <span>{activeTab === 'ar' ? 'إعدادات سعر باقة الـ 4 حصص (Tarification)' : 'Tarification du pack (Prix) :'}</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-700 block">
+                        {activeTab === 'ar' ? 'سعر الباقة الإجمالي بالريال (Riyal) :' : 'Prix total du pack (Riyal / QAR) :'}
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.packPriceQar || formData[activeTab]?.packPriceQar || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setFormData((prev) => ({
+                            ...prev,
+                            packPriceQar: val,
+                            fr: { ...prev.fr, packPriceQar: val },
+                            ar: { ...prev.ar, packPriceQar: val },
+                            en: { ...prev.en, packPriceQar: val },
+                          }));
+                        }}
+                        className="w-full h-10 px-3.5 rounded-xl border-2 border-indigo-200 bg-white focus:border-indigo-600 outline-none font-bold text-xs shadow-sm"
+                        placeholder="80 Riyals"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-700 block">
+                        {activeTab === 'ar' ? 'سعر الحصة الواحدة باليورو (Euro) :' : 'Prix par séance (Euro) :'}
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.packPriceEur || formData[activeTab]?.packPriceEur || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setFormData((prev) => ({
+                            ...prev,
+                            packPriceEur: val,
+                            fr: { ...prev.fr, packPriceEur: val },
+                            ar: { ...prev.ar, packPriceEur: val },
+                            en: { ...prev.en, packPriceEur: val },
+                          }));
+                        }}
+                        className="w-full h-10 px-3.5 rounded-xl border-2 border-indigo-200 bg-white focus:border-indigo-600 outline-none font-bold text-xs shadow-sm"
+                        placeholder="19€ / séance"
+                      />
+                    </div>
+                  </div>
+
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700">
+                    <label className="text-xs font-bold text-slate-700 block">
+                      {activeTab === 'ar' ? 'عنوان قسم السعر :' : 'Titre du tarif :'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData[activeTab]?.priceTitle || ''}
+                      onChange={(e) => handleChange(activeTab, 'priceTitle', e.target.value)}
+                      className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 block">
+                      {activeTab === 'ar' ? 'نص ووصف السعر التوضيحي :' : 'Description du tarif :'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData[activeTab]?.priceDesc || ''}
+                      onChange={(e) => handleChange(activeTab, 'priceDesc', e.target.value)}
+                      className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-[#4221b6] outline-none font-bold text-xs shadow-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 block">
                       {activeTab === 'ar' ? 'وسم العرض (Badge):' : 'Badge de l\'offre :'}
                     </label>
                     <input
@@ -1824,7 +1938,7 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700">
+                    <label className="text-xs font-bold text-slate-700 block">
                       {activeTab === 'ar' ? 'وسم المجان (Free Tag):' : 'Tag gratuit :'}
                     </label>
                     <input
@@ -1838,7 +1952,7 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">
+                  <label className="text-xs font-bold text-slate-700 block">
                     {activeTab === 'ar' ? 'عنوان العرض الخاص:' : 'Titre de l\'offre :'}
                   </label>
                   <input
@@ -1851,7 +1965,7 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">
+                  <label className="text-xs font-bold text-slate-700 block">
                     {activeTab === 'ar' ? 'وصف العرض الخاص:' : 'Description de l\'offre :'}
                   </label>
                   <textarea
@@ -1865,7 +1979,7 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700">
+                    <label className="text-xs font-bold text-slate-700 block">
                       {activeTab === 'ar' ? 'نص زر الاختيار:' : 'Bouton sélectionner :'}
                     </label>
                     <input
@@ -1878,7 +1992,7 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700">
+                    <label className="text-xs font-bold text-slate-700 block">
                       {activeTab === 'ar' ? 'نص الزر عند التفعيل:' : 'Bouton sélectionné :'}
                     </label>
                     <input
@@ -1932,8 +2046,78 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
             {/* Calendar Step 3 Form */}
             {sectionKey === 'calendarStep3' && (
               <>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">
+                <div className="p-4 bg-emerald-50/80 rounded-2xl border-2 border-emerald-300 space-y-3">
+                  <div className="flex items-center gap-2 text-emerald-900 font-extrabold text-xs">
+                    <span className="material-symbols-outlined text-base text-emerald-600">chat</span>
+                    <span>{activeTab === 'ar' ? 'إعدادات قسم الواتساب (WhatsApp)' : 'Paramètres de la section WhatsApp :'}</span>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 block">
+                      {activeTab === 'ar' ? 'رقم الواتساب (WhatsApp Number) :' : 'Numéro de téléphone WhatsApp :'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.whatsappNumber || formData[activeTab]?.whatsappNumber || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFormData((prev) => ({
+                          ...prev,
+                          whatsappNumber: val,
+                          fr: { ...prev.fr, whatsappNumber: val },
+                          ar: { ...prev.ar, whatsappNumber: val },
+                          en: { ...prev.en, whatsappNumber: val },
+                        }));
+                      }}
+                      className="w-full h-10 px-3.5 rounded-xl border-2 border-emerald-300 bg-white focus:border-emerald-600 outline-none font-bold text-xs shadow-sm"
+                      placeholder="00974 33069770"
+                      dir="ltr"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 block">
+                      {activeTab === 'ar' ? 'عنوان قسم الواتساب :' : 'Titre de la section WhatsApp :'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData[activeTab]?.whatsappTitle || ''}
+                      onChange={(e) => handleChange(activeTab, 'whatsappTitle', e.target.value)}
+                      className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-emerald-500 outline-none font-bold text-xs shadow-sm"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 block">
+                      {activeTab === 'ar' ? 'نص ووصف الواتساب :' : 'Instructions / Description WhatsApp :'}
+                    </label>
+                    <textarea
+                      rows={2}
+                      required
+                      value={formData[activeTab]?.whatsappDesc || ''}
+                      onChange={(e) => handleChange(activeTab, 'whatsappDesc', e.target.value)}
+                      className="w-full p-2.5 rounded-xl border-2 border-slate-200 bg-white focus:border-emerald-500 outline-none font-bold text-xs shadow-sm resize-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 block">
+                      {activeTab === 'ar' ? 'نص زر الواتساب :' : 'Texte du bouton WhatsApp :'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData[activeTab]?.whatsappButton || ''}
+                      onChange={(e) => handleChange(activeTab, 'whatsappButton', e.target.value)}
+                      className="w-full h-10 px-3.5 rounded-xl border-2 border-slate-200 bg-white focus:border-emerald-500 outline-none font-bold text-xs shadow-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1 pt-1">
+                  <label className="text-xs font-bold text-slate-700 block">
                     {activeTab === 'ar' ? 'عنوان الخطوة الثالثة (طريقة الدفع):' : 'Titre Étape 3 (Paiement) :'}
                   </label>
                   <input
@@ -1946,7 +2130,7 @@ export default function EditSectionModal({ sectionKey, sectionTitle, onClose }) 
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">
+                  <label className="text-xs font-bold text-slate-700 block">
                     {activeTab === 'ar' ? 'نص زر تأكيد الحجز:' : 'Bouton confirmer réservation :'}
                   </label>
                   <input

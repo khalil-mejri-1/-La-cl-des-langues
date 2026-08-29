@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import MeetModal from '../components/MeetModal';
+import ChangeStudentAvatarModal from '../components/ChangeStudentAvatarModal';
 import { API_BASE_URL } from '../config';
 import { createNotification } from '../utils/notifications';
 import { AdminSessionPackSkeleton, TableRowsSkeleton } from '../components/Skeletons';
@@ -16,6 +17,7 @@ export default function AdminPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [editingSession, setEditingSession] = useState(null);
   const [sessionToDelete, setSessionToDelete] = useState(null);
+  const [selectedStudentForAvatar, setSelectedStudentForAvatar] = useState(null);
 
   // Calendar Lock & Month state for Teacher
   const initialLoadDoneRef = useRef(false);
@@ -1549,8 +1551,19 @@ export default function AdminPage() {
                         filteredClients.map((client, idx) => (
                           <tr key={client._id || idx} class="hover:bg-surface-container-low transition-colors">
                             <td class="p-4 font-bold text-on-surface flex items-center gap-3">
-                              <div class="w-9 h-9 rounded-full bg-[#e0d7ff] text-[#4221b6] flex items-center justify-center font-black text-sm">
-                                {(client.parentName || client.email || 'P')[0].toUpperCase()}
+                              <div
+                                onClick={() => setSelectedStudentForAvatar(client)}
+                                title={lang === 'ar' ? 'تغيير صورة هذا التلميذ فقط' : 'Changer la photo de cet élève uniquement'}
+                                className="w-10 h-10 rounded-2xl overflow-hidden bg-[#e0d7ff] text-[#4221b6] flex items-center justify-center font-black text-sm relative group cursor-pointer border border-[#8c90f6]/30 shadow-sm shrink-0 hover:scale-105 transition-transform"
+                              >
+                                {client.picture ? (
+                                  <img src={client.picture} alt={client.childName || 'Avatar'} className="w-full h-full object-cover" />
+                                ) : (
+                                  <span>{(client.parentName || client.email || 'P')[0].toUpperCase()}</span>
+                                )}
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                  <span className="material-symbols-outlined text-sm">photo_camera</span>
+                                </div>
                               </div>
                               <div>
                                 <span class="block">{client.parentName || 'Parent'}</span>
@@ -2319,6 +2332,18 @@ export default function AdminPage() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Change Student Avatar Modal in Admin View */}
+      {selectedStudentForAvatar && (
+        <ChangeStudentAvatarModal
+          isOpen={!!selectedStudentForAvatar}
+          onClose={() => setSelectedStudentForAvatar(null)}
+          student={selectedStudentForAvatar}
+          onSuccess={(newPic) => {
+            fetchClients(true);
+          }}
+        />
       )}
     </div>
   );

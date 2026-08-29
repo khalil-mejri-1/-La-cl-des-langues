@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import EditSectionModal from '../components/EditSectionModal';
+import ChangeStudentAvatarModal, { DEFAULT_STUDENT_AVATAR } from '../components/ChangeStudentAvatarModal';
 import { API_BASE_URL } from '../config';
 import { createNotification } from '../utils/notifications';
 import { SessionCardSkeleton, TeacherCardsSkeleton } from '../components/Skeletons';
@@ -23,7 +24,20 @@ export default function DashboardPage() {
     return false;
   })();
 
+  // Check if user role contains 'maitresse' / teacher
+  const isMaitresse = (() => {
+    if (!user) return false;
+    const r = user.role || user.roles;
+    if (!r) return false;
+    if (typeof r === 'string') return r.toLowerCase().includes('maitresse') || r.toLowerCase().includes('teacher') || r.toLowerCase().includes('maître');
+    if (Array.isArray(r)) return r.some((item) => String(item).toLowerCase().includes('maitresse') || String(item).toLowerCase().includes('teacher') || String(item).toLowerCase().includes('maître'));
+    return false;
+  })();
+
+  const canEditStudentAvatar = isAdmin || isMaitresse;
+
   const [editingSectionModal, setEditingSectionModal] = useState(null); // { key, title }
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
 
   // Real Sessions State
   const [sessions, setSessions] = useState([]);
@@ -506,12 +520,48 @@ export default function DashboardPage() {
         )}
 
         <div className="flex items-center gap-4 text-center sm:text-left rtl:sm:text-right w-full sm:w-auto flex-col sm:flex-row">
-          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden border-2 border-white shadow-md bg-white flex items-center justify-center shrink-0">
-            <img
-              alt="Mascot waving"
-              className="w-full h-full object-cover"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBF-VgHZWivqK0W6c5fa_VKkY0L-pIuXnMOONzEFytFG-zLHuG4tkUuGky5v-ViLjzhK1IX-z7ieazinQTvBAynhmrlnpD6QCbmytyBkxdwnQ1WZrIW6oIrpuci_8qWFnKEVCdQkpDJRWy0Z-4dU5bP9hYyYRnu2L48NivQ6aVab9Eetf-U8FK45VgF1t4JEeLEwVcHHkamYSu-Y5xJQ-cjWxsOeLn2Z1R2NmC-goe6GYnD1FtjC3PS"
-            />
+          <div className="relative group shrink-0">
+            <div
+              onClick={() => {
+                if (canEditStudentAvatar) setIsAvatarModalOpen(true);
+              }}
+              className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden border-2 border-white shadow-md bg-white flex items-center justify-center relative ${
+                canEditStudentAvatar ? 'cursor-pointer hover:ring-4 hover:ring-[#4221b6]/40 transition-all' : ''
+              }`}
+              title={
+                canEditStudentAvatar
+                  ? (lang === 'ar' ? 'تغيير صورة هذا التلميذ (خاص بالمعلمة والإدارة)' : "Changer l'avatar de cet élève (Admin & Maîtresse)")
+                  : undefined
+              }
+            >
+              <img
+                alt={user?.childName || "Avatar de l'élève"}
+                className="w-full h-full object-cover"
+                src={user?.picture || DEFAULT_STUDENT_AVATAR}
+                onError={(e) => {
+                  e.target.src = DEFAULT_STUDENT_AVATAR;
+                }}
+              />
+              {canEditStudentAvatar && (
+                <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white">
+                  <span className="material-symbols-outlined text-xl">photo_camera</span>
+                  <span className="text-[9px] font-black text-center leading-tight">
+                    {lang === 'ar' ? 'تعديل' : 'Modifier'}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {canEditStudentAvatar && (
+              <button
+                type="button"
+                onClick={() => setIsAvatarModalOpen(true)}
+                title={lang === 'ar' ? 'تغيير صورة هذا التلميذ' : 'Changer la photo de cet élève'}
+                className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[#4221b6] text-white flex items-center justify-center shadow-md hover:scale-110 transition-transform cursor-pointer border border-white"
+              >
+                <span className="material-symbols-outlined text-xs">edit</span>
+              </button>
+            )}
           </div>
           <div>
             <h1 className="text-xl sm:text-2xl font-black text-[#1c0576] mb-1">
@@ -919,6 +969,15 @@ export default function DashboardPage() {
           sectionKey={editingSectionModal.key}
           sectionTitle={editingSectionModal.title}
           onClose={() => setEditingSectionModal(null)}
+        />
+      )}
+
+      {/* Change Student Avatar Modal (Admin & Maîtresse privilege) */}
+      {isAvatarModalOpen && user && (
+        <ChangeStudentAvatarModal
+          isOpen={isAvatarModalOpen}
+          onClose={() => setIsAvatarModalOpen(false)}
+          student={user}
         />
       )}
     </div>

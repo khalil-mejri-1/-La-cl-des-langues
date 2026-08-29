@@ -286,6 +286,25 @@
   }
 }
 
+/* Responsive breakpoint for Maîtresse / Admin accounts: hide nav tabs and show menu button at <= 1630px */
+@media (max-width: 1630px) {
+  .admin-teacher-nav .nav-desktop-only {
+    display: none !important;
+  }
+  .admin-teacher-nav .nav-menu-toggle-btn {
+    display: flex !important;
+  }
+}
+
+@media (min-width: 1631px) {
+  .admin-teacher-nav .nav-desktop-only {
+    display: inline-flex !important;
+  }
+  .admin-teacher-nav .nav-menu-toggle-btn {
+    display: none !important;
+  }
+}
+
 
 
 /* Creative Menu Overlay & Card Styles */

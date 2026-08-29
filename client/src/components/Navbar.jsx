@@ -300,6 +300,12 @@ export default function Navbar() {
       .replace(/\s*\(Session\)/g, '')
       .trim();
   };
+  const handleLogout = () => {
+    logoutUser();
+    setIsMenuOpen(false);
+    setIsNotificationsOpen(false);
+    navigate('/');
+  };
   // ──────────────────────────────────────────────────────────────────────────
 
   const navLinks = [
@@ -312,7 +318,7 @@ export default function Navbar() {
   ];
 
   return (
-    <header className={`bg-surface/95 dark:bg-surface-dim/95 backdrop-blur-lg top-0 border-b border-surface-variant/80 shadow-sm z-50 sticky transition-all${!isLoggedIn ? ' guest-nav' : ''}`}>
+    <header className={`bg-surface/95 dark:bg-surface-dim/95 backdrop-blur-lg top-0 border-b border-surface-variant/80 shadow-sm z-50 sticky transition-all${!isLoggedIn ? ' guest-nav' : ''}${showAdmin ? ' admin-teacher-nav' : ''}`}>
       <div className="flex justify-between items-center w-full px-4 sm:px-8 md:px-12 h-[80px]">
         {/* Left: Brand Logo */}
         <div className="flex items-center shrink-0">
@@ -537,41 +543,53 @@ export default function Navbar() {
             </button>
           </div>
 
-          {/* Account Badge / Auth buttons (Top Bar) */}
+          {/* Account Profile Pill Widget (Top Bar) */}
           {user ? (
             <div className="flex items-center gap-2.5 hide-on-471">
-              <div className="hidden sm:flex flex-col text-right rtl:text-left items-end rtl:items-start max-w-[220px]">
-                <div className="flex items-center gap-1.5 flex-wrap justify-end rtl:justify-start">
-                  <span className="text-xs font-black text-on-surface leading-tight truncate">
-                    {user.parentName || (user.email ? user.email.split('@')[0] : 'Compte')}
-                  </span>
-                  {formatRoleLabel(user.role || user.roles).map((rb, rIdx) => (
-                    <span
-                      key={rIdx}
-                      className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${rb.color}`}
-                    >
-                      {rb.label}
-                    </span>
-                  ))}
+              <div className="hidden sm:flex items-center gap-2.5 px-3 py-1.5 rounded-2xl bg-white border border-slate-200/90 shadow-xs hover:shadow-md transition-all">
+                {/* User Avatar Circle */}
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#4221b6] via-[#5d35e0] to-[#78fd7d] text-white flex items-center justify-center font-black text-xs shadow-xs shrink-0">
+                  {user.parentName ? user.parentName.charAt(0).toUpperCase() : (user.email ? user.email.charAt(0).toUpperCase() : '👤')}
                 </div>
-                {user.email && (
-                  <span className="text-[11px] text-slate-500 font-semibold leading-tight truncate mt-0.5" title={user.email}>
-                    {user.email}
-                  </span>
-                )}
-                {user.childName && (
-                  <span className="text-[10px] text-slate-400 font-medium">
-                    (Enfant: {user.childName})
-                  </span>
-                )}
+
+                {/* User Info Details */}
+                <div className="flex flex-col text-left rtl:text-right min-w-0 max-w-[150px] lg:max-w-[200px]">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-xs font-black text-[#1c0576] truncate leading-tight">
+                      {user.parentName || (user.email ? user.email.split('@')[0] : 'Compte')}
+                    </span>
+                    {formatRoleLabel(user.role || user.roles).map((rb, rIdx) => (
+                      <span
+                        key={rIdx}
+                        className={`text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider shrink-0 ${rb.color}`}
+                      >
+                        {rb.label}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-1 text-[11px] text-slate-500 font-semibold truncate leading-tight mt-0.5">
+                    <span className="truncate" title={user.email}>{user.email}</span>
+                    {user.childName && (
+                      <span className="text-[10px] text-slate-400 font-medium shrink-0">
+                        • {user.childName}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Vertical Divider */}
+                <div className="h-6 w-px bg-slate-200 shrink-0 mx-0.5"></div>
+
+                {/* Logout Button */}
+                <button
+                  onClick={handleLogout}
+                  title={lang === 'ar' ? 'تسجيل الخروج' : lang === 'en' ? 'Log out' : 'Déconnexion'}
+                  className="w-8 h-8 rounded-xl bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center cursor-pointer shrink-0 hover:scale-105 active:scale-95 border border-red-100 shadow-xs"
+                >
+                  <span className="material-symbols-outlined text-base">logout</span>
+                </button>
               </div>
-              <button
-                onClick={logoutUser}
-                title="Déconnexion"
-                className="w-10 h-10 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition-all flex items-center justify-center cursor-pointer font-bold shrink-0 hover:scale-105 shadow-sm"
-              >
-                <span className="material-symbols-outlined text-lg">logout</span>
-              </button>
             </div>
           ) : isAdminPath ? (
             <div className="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-label-bold text-label-bold shadow-md cursor-pointer font-bold hover:scale-105 transition-transform hide-on-471">
@@ -738,10 +756,7 @@ export default function Navbar() {
                       </div>
                     </div>
                     <button
-                      onClick={() => {
-                        logoutUser();
-                        setIsMenuOpen(false);
-                      }}
+                      onClick={handleLogout}
                       className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 font-bold text-[11px] transition-colors border border-red-200 cursor-pointer shadow-xs"
                     >
                       <span className="material-symbols-outlined text-sm">logout</span>

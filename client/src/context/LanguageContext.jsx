@@ -21,33 +21,28 @@ export function LanguageProvider({ children }) {
 
   // Fetch custom nav and section settings from MongoDB Atlas on mount
   useEffect(() => {
+    let isMounted = true;
     const fetchSettings = async () => {
       try {
-        const [navRes, secRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/settings/nav`),
-          fetch(`${API_BASE_URL}/api/settings/sections`)
-        ]);
+        const navPromise = fetch(`${API_BASE_URL}/api/settings/nav`).then(r => r.ok ? r.json() : null).catch(() => null);
+        const secPromise = fetch(`${API_BASE_URL}/api/settings/sections`).then(r => r.ok ? r.json() : null).catch(() => null);
+        const [navData, secData] = await Promise.all([navPromise, secPromise]);
 
-        if (navRes.ok) {
-          const navData = await navRes.json();
-          if (navData.nav) {
-            setCustomNav(navData.nav);
-            localStorage.setItem('app_custom_nav', JSON.stringify(navData.nav));
-          }
+        if (isMounted && navData?.nav) {
+          setCustomNav(navData.nav);
+          localStorage.setItem('app_custom_nav', JSON.stringify(navData.nav));
         }
 
-        if (secRes.ok) {
-          const secData = await secRes.json();
-          if (secData.sections) {
-            setCustomSections(secData.sections);
-            localStorage.setItem('app_custom_sections', JSON.stringify(secData.sections));
-          }
+        if (isMounted && secData?.sections) {
+          setCustomSections(secData.sections);
+          localStorage.setItem('app_custom_sections', JSON.stringify(secData.sections));
         }
       } catch (err) {
-        console.log('Erreur chargement settings MongoDB:', err);
+        // Silent fallback
       }
     };
     fetchSettings();
+    return () => { isMounted = false; };
   }, []);
 
   const updateNavTitles = async (newNavTitles) => {

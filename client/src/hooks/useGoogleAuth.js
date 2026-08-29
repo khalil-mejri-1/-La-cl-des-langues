@@ -21,6 +21,8 @@ function decodeGoogleJwt(token) {
 }
 
 const HIDDEN_BTN_ID = '__google_hidden_signin_btn__';
+let isGoogleInitialized = false;
+let activeGoogleCallback = null;
 
 /**
  * useGoogleAuth – renders a hidden Google Sign-In button and exposes
@@ -28,7 +30,6 @@ const HIDDEN_BTN_ID = '__google_hidden_signin_btn__';
  * (avoids popup blocker since it's in the same call stack as user click).
  */
 export default function useGoogleAuth({ loginUser, onSuccess, onError }) {
-  const callbackRef = useRef(null);
   const containerRef = useRef(null);
 
   // Handle Google credential response
@@ -74,7 +75,9 @@ export default function useGoogleAuth({ loginUser, onSuccess, onError }) {
     }
   }, [loginUser, onSuccess, onError]);
 
-  callbackRef.current = handleCredentialResponse;
+  useEffect(() => {
+    activeGoogleCallback = handleCredentialResponse;
+  }, [handleCredentialResponse]);
 
   useEffect(() => {
     // Create hidden container for Google button if not exists
@@ -87,35 +90,44 @@ export default function useGoogleAuth({ loginUser, onSuccess, onError }) {
     }
     containerRef.current = container;
 
-    // Poll until google.accounts.id is loaded
+    // Initialize Google accounts SDK once
     let tries = 0;
     const init = () => {
       tries++;
       if (window.google?.accounts?.id) {
-        window.google.accounts.id.initialize({
-          client_id: GOOGLE_CLIENT_ID,
-          callback: (resp) => callbackRef.current(resp),
-          auto_select: false,
-          cancel_on_tap_outside: true,
-          ux_mode: 'popup', // Use popup mode — real browser-trusted popup
-        });
+        if (!isGoogleInitialized) {
+          try {
+            window.google.accounts.id.initialize({
+              client_id: GOOGLE_CLIENT_ID,
+              callback: (resp) => {
+                if (typeof activeGoogleCallback === 'function') {
+                  activeGoogleCallback(resp);
+                }
+              },
+              auto_select: false,
+              cancel_on_tap_outside: true,
+              ux_mode: 'popup',
+            });
+            isGoogleInitialized = true;
+          } catch {}
+        }
 
-        // Render the real Google button (hidden) — browser trusts this button
-        window.google.accounts.id.renderButton(container, {
-          type: 'standard',
-          theme: 'outline',
-          size: 'large',
-          width: 300,
-        });
-      } else if (tries < 50) {
+        // Render the real Google button (hidden)
+        try {
+          if (container && !container.hasChildNodes()) {
+            window.google.accounts.id.renderButton(container, {
+              type: 'standard',
+              theme: 'outline',
+              size: 'large',
+              width: 300,
+            });
+          }
+        } catch {}
+      } else if (tries < 40) {
         setTimeout(init, 200);
       }
     };
     init();
-
-    return () => {
-      // Don't remove on unmount — other instances may need it
-    };
   }, []);
 
   /**
@@ -125,7 +137,6 @@ export default function useGoogleAuth({ loginUser, onSuccess, onError }) {
   const triggerGoogleSignIn = useCallback(() => {
     const container = document.getElementById(HIDDEN_BTN_ID);
     if (container) {
-      // Click the real Google button inside the hidden container
       const btn = container.querySelector('div[role="button"]') ||
                   container.querySelector('button') ||
                   container.firstElementChild;
@@ -136,7 +147,9 @@ export default function useGoogleAuth({ loginUser, onSuccess, onError }) {
     }
     // Fallback: use One Tap if button not found
     if (window.google?.accounts?.id) {
-      window.google.accounts.id.prompt();
+      try {
+        window.google.accounts.id.prompt();
+      } catch {}
     } else {
       onError?.('Google Identity Services non chargé. Actualisez la page et réessayez.');
     }
@@ -144,4 +157,3 @@ export default function useGoogleAuth({ loginUser, onSuccess, onError }) {
 
   return { triggerGoogleSignIn };
 }
-

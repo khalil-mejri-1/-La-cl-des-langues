@@ -36,14 +36,14 @@ export default function Footer() {
       )}
 
       <div className="flex flex-col md:flex-row justify-between items-center px-container-margin py-12 gap-gutter w-full max-w-7xl mx-auto">
-        <div className="flex flex-col items-center md:items-start gap-4">
-          <div className="text-headline-md font-headline-md text-secondary">{t.brand}</div>
-          <div className="w-16 h-16">
+        <div className="flex flex-col items-center md:items-start gap-3">
+          <div className="flex items-center gap-3">
             <img
-              alt="Mascotte miniature"
-              className="w-full h-full object-contain opacity-80"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBF-VgHZWivqK0W6c5fa_VKkY0L-pIuXnMOONzEFytFG-zLHuG4tkUuGky5v-ViLjzhK1IX-z7ieazinQTvBAynhmrlnpD6QCbmytyBkxdwnQ1WZrIW6oIrpuci_8qWFnKEVCdQkpDJRWy0Z-4dU5bP9hYyYRnu2L48NivQ6aVab9Eetf-U8FK45VgF1t4JEeLEwVcHHkamYSu-Y5xJQ-cjWxsOeLn2Z1R2NmC-goe6GYnD1FtjC3PS"
+              alt="Logo La clé des langues"
+              className="w-14 h-14 object-contain rounded-2xl shadow-sm"
+              src="/logo.png"
             />
+            <div className="text-xl sm:text-2xl font-black text-[#1c0576]">{t.brand}</div>
           </div>
         </div>
 

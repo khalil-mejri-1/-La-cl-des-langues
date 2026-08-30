@@ -327,7 +327,11 @@ export default function Navbar() {
             onClick={() => setIsMenuOpen(false)}
             className="text-xl md:text-2xl font-black text-[#1c0576] flex items-center gap-2.5 cursor-pointer text-left hover:scale-105 transition-transform"
           >
-            <span className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#78fd7d] to-[#b0fdb5] flex items-center justify-center text-[#0d4013] text-xl font-black shadow-md hide-on-357">🦊</span>
+            <img
+              src="/logo.png"
+              alt="Logo La clé des langues"
+              className="w-10 h-10 object-contain rounded-xl shadow-xs hide-on-357"
+            />
             <span className="tracking-tight">{t.brand}</span>
             {isAdminPath && (
               <span className="text-tertiary text-xs font-bold bg-surface-container-high px-2.5 py-1 rounded-full border border-surface-variant hidden sm:inline-block">
@@ -649,9 +653,11 @@ export default function Navbar() {
             {/* Header banner */}
             <div className="flex items-center justify-between p-2.5 mb-2.5 rounded-2xl bg-gradient-to-r from-[#4221b6] to-[#5d35e0] text-white shadow-sm shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-base shadow-inner shrink-0">
-                  🦊
-                </div>
+                <img
+                  src="/logo.png"
+                  alt="Logo La clé des langues"
+                  className="w-8 h-8 object-contain rounded-lg bg-white/90 p-0.5 shadow-sm shrink-0"
+                />
                 <div>
                   <h3 className="font-black text-xs sm:text-sm leading-tight tracking-tight">{t.brand}</h3>
                   <p className="text-[10px] text-white/80 font-medium">Navigation rapide</p>

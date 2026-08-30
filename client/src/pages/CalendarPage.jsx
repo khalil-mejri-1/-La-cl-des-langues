@@ -75,16 +75,18 @@ export default function CalendarPage() {
   const defaultFallbackDays = lang === 'ar' ? ['الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'] : ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
   const defaultFallbackTimes = ['10:00', '14:00', '16:30'];
 
-  // Load teacher from URL query params or API
+  // Load teacher from URL query params or API with real-time auto sync
   useEffect(() => {
+    let isMounted = true;
+
     const fetchTargetTeacherAndList = async () => {
       let foundTeacher = null;
 
       try {
-        const res = await fetch(`${API_BASE_URL}/api/teachers`);
+        const res = await fetch(`${API_BASE_URL}/api/teachers?_t=${Date.now()}`);
         if (res.ok) {
           const data = await res.json();
-          if (data.teachers && Array.isArray(data.teachers)) {
+          if (data.teachers && Array.isArray(data.teachers) && isMounted) {
             setTeachersList(data.teachers);
 
             if (teacherIdParam || teacherNameParam) {
@@ -96,8 +98,15 @@ export default function CalendarPage() {
                   (t.email && t.email.toLowerCase().includes(teacherNameParam.toLowerCase()))
                 ))
               );
-            } else if (data.teachers.length > 0 && !isMaitresse) {
-              foundTeacher = data.teachers[0];
+            } else {
+              // Keep target teacher synchronized with the latest schedule from database
+              setTargetTeacher(prev => {
+                if (prev) {
+                  const updated = data.teachers.find(t => String(t._id || t.id) === String(prev._id || prev.id) || t.email === prev.email);
+                  return updated || prev;
+                }
+                return !isMaitresse && data.teachers.length > 0 ? data.teachers[0] : null;
+              });
             }
           }
         }
@@ -107,27 +116,53 @@ export default function CalendarPage() {
 
       if (!foundTeacher && teacherIdParam) {
         try {
-          const res = await fetch(`${API_BASE_URL}/api/clients/${teacherIdParam}`);
+          const res = await fetch(`${API_BASE_URL}/api/clients/${teacherIdParam}?_t=${Date.now()}`);
           if (res.ok) {
             const data = await res.json();
-            if (data.user) {
+            if (data.user && isMounted) {
               foundTeacher = data.user;
             }
           }
         } catch {}
       }
 
-      if (foundTeacher) {
+      if (foundTeacher && isMounted) {
         setTargetTeacher(foundTeacher);
       }
-      setLoadingTeachers(false);
+      if (isMounted) setLoadingTeachers(false);
     };
 
     fetchTargetTeacherAndList();
+
+    // Listen to real-time teacher schedule updates across components & browser tabs
+    const handleScheduleUpdate = () => {
+      fetchTargetTeacherAndList();
+    };
+
+    const handleStorage = (e) => {
+      if (e.key === 'teacher_schedule_cache_sync') {
+        fetchTargetTeacherAndList();
+      }
+    };
+
+    window.addEventListener('teacher_schedule_updated', handleScheduleUpdate);
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('focus', fetchTargetTeacherAndList);
+
+    // Auto-poll every 3 seconds for live schedule updates
+    const interval = setInterval(fetchTargetTeacherAndList, 3000);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('teacher_schedule_updated', handleScheduleUpdate);
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('focus', fetchTargetTeacherAndList);
+      clearInterval(interval);
+    };
   }, [teacherIdParam, teacherNameParam, isMaitresse]);
 
   // Determine active schedule (from target teacher if selected, or logged in user, or fallbacks)
-  const effectiveTeacher = targetTeacher || (isMaitresse ? user : null);
+  const effectiveTeacher = targetTeacher || (isMaitresse || isAdmin ? user : (teachersList[0] || null));
 
   const effectiveDays = effectiveTeacher?.availableDays && effectiveTeacher.availableDays.length > 0
     ? effectiveTeacher.availableDays

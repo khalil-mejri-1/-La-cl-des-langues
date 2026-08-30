@@ -117,6 +117,28 @@ export default function AdminPage() {
             customDaySlots: newCustomDaySlots,
             timeSlots: newTimeSlots,
           });
+
+          // Broadcast schedule update in real time
+          window.dispatchEvent(new CustomEvent('teacher_schedule_updated', {
+            detail: {
+              teacherId: targetId,
+              blockedDates: newBlockedDates,
+              blockedSlots: newBlockedSlots,
+              customDaySlots: newCustomDaySlots,
+              timeSlots: newTimeSlots,
+            }
+          }));
+
+          try {
+            localStorage.setItem('teacher_schedule_cache_sync', JSON.stringify({
+              ts: Date.now(),
+              teacherId: targetId,
+              blockedDates: newBlockedDates,
+              blockedSlots: newBlockedSlots,
+              customDaySlots: newCustomDaySlots,
+              timeSlots: newTimeSlots,
+            }));
+          } catch {}
         }
       } catch (err) {
         console.error('Erreur sauvegarde du planning:', err);

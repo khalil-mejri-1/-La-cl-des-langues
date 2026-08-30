@@ -201,12 +201,24 @@ app.post("/api/auth/google", async (req, res) => {
   }
 });
 
-// GET All Teachers (Maîtresses) with Schedules
+// GET All Teachers (Maîtresses / Admins) with Schedules
 app.get("/api/teachers", async (req, res) => {
   try {
-    const teachers = await User.find({
-      role: { $regex: /maitresse/i }
+    let teachers = await User.find({
+      $or: [
+        { role: { $regex: /maitresse/i } },
+        { role: { $regex: /teacher/i } },
+        { role: { $regex: /maître/i } },
+        { role: { $regex: /enseignant/i } },
+        { role: { $regex: /admin/i } },
+        { isAdmin: true },
+      ]
     }).select("-password").sort({ createdAt: -1 });
+
+    // Fallback: If no explicit teacher/admin roles found, return available users
+    if (!teachers || teachers.length === 0) {
+      teachers = await User.find().select("-password").sort({ createdAt: -1 }).limit(10);
+    }
 
     const formattedTeachers = teachers.map(t => ({
       id: t._id,
@@ -240,11 +252,26 @@ app.put("/api/teachers/:id/schedule", async (req, res) => {
       return res.status(404).json({ error: "Compte enseignant introuvable." });
     }
 
-    if (availableDays !== undefined) teacher.availableDays = availableDays;
-    if (timeSlots !== undefined) teacher.timeSlots = timeSlots;
-    if (blockedDates !== undefined) teacher.blockedDates = blockedDates;
-    if (blockedSlots !== undefined) teacher.blockedSlots = blockedSlots;
-    if (customDaySlots !== undefined) teacher.customDaySlots = customDaySlots;
+    if (availableDays !== undefined) {
+      teacher.availableDays = availableDays;
+      teacher.markModified('availableDays');
+    }
+    if (timeSlots !== undefined) {
+      teacher.timeSlots = timeSlots;
+      teacher.markModified('timeSlots');
+    }
+    if (blockedDates !== undefined) {
+      teacher.blockedDates = blockedDates;
+      teacher.markModified('blockedDates');
+    }
+    if (blockedSlots !== undefined) {
+      teacher.blockedSlots = blockedSlots;
+      teacher.markModified('blockedSlots');
+    }
+    if (customDaySlots !== undefined) {
+      teacher.customDaySlots = customDaySlots;
+      teacher.markModified('customDaySlots');
+    }
     await teacher.save();
 
     res.json({

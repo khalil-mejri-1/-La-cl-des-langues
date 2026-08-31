@@ -14,8 +14,11 @@ export default function Navbar() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isEditNavOpen, setIsEditNavOpen] = useState(false);
+  const [isLangModalOpen, setIsLangModalOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const notifContainerRef = useRef(null);
+  const userMenuRef = useRef(null);
   const [readIds, setReadIds] = useState(() => {
     try { return JSON.parse(localStorage.getItem('notif_read_ids') || '[]'); } catch { return []; }
   });
@@ -239,6 +242,29 @@ export default function Navbar() {
     };
   }, [isNotificationsOpen]);
 
+  // Click outside listener for User Menu Dropdown
+  useEffect(() => {
+    const handleUserOutsideClick = (e) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    const handleUserEscape = (e) => {
+      if (e.key === 'Escape') setIsUserMenuOpen(false);
+    };
+
+    if (isUserMenuOpen) {
+      document.addEventListener('mousedown', handleUserOutsideClick);
+      document.addEventListener('touchstart', handleUserOutsideClick);
+      document.addEventListener('keydown', handleUserEscape);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleUserOutsideClick);
+      document.removeEventListener('touchstart', handleUserOutsideClick);
+      document.removeEventListener('keydown', handleUserEscape);
+    };
+  }, [isUserMenuOpen]);
+
   const markAllRead = () => {
     const allIds = notifications.map(n => n.id);
     setReadIds(allIds);
@@ -301,9 +327,10 @@ export default function Navbar() {
       .trim();
   };
   const handleLogout = () => {
-    logoutUser();
+    setIsUserMenuOpen(false);
     setIsMenuOpen(false);
     setIsNotificationsOpen(false);
+    logoutUser();
     navigate('/');
   };
   // ──────────────────────────────────────────────────────────────────────────
@@ -379,36 +406,23 @@ export default function Navbar() {
             </button>
           )}
 
-          {/* Language Switcher (Desktop) */}
-          <div className="hidden md:flex hide-on-471 items-center gap-1 bg-surface-container-low/90 backdrop-blur-md p-1 rounded-full border border-surface-variant shadow-inner">
-            <button
-              onClick={() => setLang('fr')}
-              className={`font-label-bold rounded-full px-3 py-1.5 text-xs transition-all cursor-pointer ${lang === 'fr'
-                ? 'bg-[#b0fdb5] text-[#0d4013] font-black shadow-sm scale-105'
-                : 'text-on-surface-variant hover:text-[#4221b6]'
-                }`}
-            >
-              FR
-            </button>
-            <button
-              onClick={() => setLang('ar')}
-              className={`font-label-bold rounded-full px-3 py-1.5 text-xs transition-all cursor-pointer ${lang === 'ar'
-                ? 'bg-[#b0fdb5] text-[#0d4013] font-black shadow-sm scale-105'
-                : 'text-on-surface-variant hover:text-[#4221b6]'
-                }`}
-            >
-              AR
-            </button>
-            <button
-              onClick={() => setLang('en')}
-              className={`font-label-bold rounded-full px-3 py-1.5 text-xs transition-all cursor-pointer ${lang === 'en'
-                ? 'bg-[#b0fdb5] text-[#0d4013] font-black shadow-sm scale-105'
-                : 'text-on-surface-variant hover:text-[#4221b6]'
-                }`}
-            >
-              EN
-            </button>
-          </div>
+          {/* Globe Language Button (Desktop) */}
+          <button
+            onClick={() => setIsLangModalOpen(true)}
+            title={lang === 'ar' ? 'تغيير اللغة' : lang === 'en' ? 'Change language' : 'Changer de langue'}
+            aria-label="Change Language"
+            className="hidden md:flex hide-on-471 items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container-low hover:bg-white border border-surface-variant hover:border-[#4221b6]/40 text-on-surface hover:text-[#4221b6] shadow-xs hover:shadow-sm transition-all cursor-pointer group"
+          >
+            <span className="material-symbols-outlined text-lg text-[#4221b6] group-hover:rotate-45 transition-transform duration-300">
+              public
+            </span>
+            <span className="font-black text-xs uppercase tracking-wider text-slate-700 group-hover:text-[#4221b6]">
+              {lang}
+            </span>
+            <span className="material-symbols-outlined text-sm text-slate-400 group-hover:text-[#4221b6]">
+              expand_more
+            </span>
+          </button>
 
           {/* Notifications Bell */}
           <div className="flex items-center gap-2 text-on-surface-variant">
@@ -539,61 +553,144 @@ export default function Navbar() {
             </div>
 
             <button
-              onClick={() => setLang(lang === 'fr' ? 'ar' : lang === 'ar' ? 'en' : 'fr')}
+              onClick={() => setIsLangModalOpen(true)}
               aria-label="language"
-              className="w-touch-target h-touch-target hide-on-471 flex items-center justify-center rounded-full hover:bg-surface-container-low transition-colors hover:text-primary-container md:hidden"
+              title={lang === 'ar' ? 'تغيير اللغة' : 'Changer la langue'}
+              className="w-11 h-11 hide-on-471 flex items-center justify-center rounded-full bg-surface-container-low hover:bg-surface-container-high border border-surface-variant text-on-surface hover:text-[#4221b6] transition-colors md:hidden cursor-pointer"
             >
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 0" }}>language</span>
+              <span className="material-symbols-outlined text-[22px] text-[#4221b6]">public</span>
             </button>
           </div>
 
-          {/* Account Profile Pill Widget (Top Bar) */}
+          {/* Account Profile Circle Widget with Dropdown */}
           {user ? (
-            <div className="flex items-center gap-2.5 hide-on-471">
-              <div className="hidden sm:flex items-center gap-2.5 px-3 py-1.5 rounded-2xl bg-white border border-slate-200/90 shadow-xs hover:shadow-md transition-all">
-                {/* User Avatar Circle */}
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#4221b6] via-[#5d35e0] to-[#78fd7d] text-white flex items-center justify-center font-black text-xs shadow-xs shrink-0">
-                  {user.parentName ? user.parentName.charAt(0).toUpperCase() : (user.email ? user.email.charAt(0).toUpperCase() : '👤')}
-                </div>
+            <div ref={userMenuRef} className="relative hide-on-471">
+              {/* Circular Avatar Trigger */}
+              <button
+                onClick={() => {
+                  setIsUserMenuOpen(!isUserMenuOpen);
+                  if (isNotificationsOpen) setIsNotificationsOpen(false);
+                }}
+                aria-label="Account Menu"
+                title={user.parentName || user.email}
+                className={`w-11 h-11 rounded-full flex items-center justify-center font-black text-sm relative transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95 border-2 ${
+                  isUserMenuOpen
+                    ? 'border-[#4221b6] ring-4 ring-[#4221b6]/20 shadow-md'
+                    : 'border-white hover:border-[#8c90f6]/60 bg-gradient-to-tr from-[#4221b6] via-[#5d35e0] to-[#78fd7d]'
+                }`}
+              >
+                {user.picture ? (
+                  <img
+                    src={user.picture}
+                    alt="Avatar"
+                    className="w-full h-full object-cover rounded-full"
+                  />
+                ) : (
+                  <span className="text-white font-black text-sm">
+                    {user.parentName ? user.parentName.charAt(0).toUpperCase() : (user.email ? user.email.charAt(0).toUpperCase() : '👤')}
+                  </span>
+                )}
+                {/* Online Status Dot */}
+                <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white shadow-xs"></span>
+              </button>
 
-                {/* User Info Details */}
-                <div className="flex flex-col text-left rtl:text-right min-w-0 max-w-[150px] lg:max-w-[200px]">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="text-xs font-black text-[#1c0576] truncate leading-tight">
-                      {user.parentName || (user.email ? user.email.split('@')[0] : 'Compte')}
-                    </span>
+              {/* Dropdown Popover Under the Circle */}
+              {isUserMenuOpen && (
+                <div
+                  className={`absolute top-full mt-2.5 w-72 sm:w-80 bg-white rounded-3xl border border-slate-100 shadow-2xl p-4 z-[999] animate-in fade-in zoom-in-95 duration-150 ${
+                    isRtl ? 'left-0 sm:left-auto sm:right-0' : 'right-0 sm:right-auto sm:left-auto'
+                  }`}
+                  dir={isRtl ? 'rtl' : 'ltr'}
+                >
+                  {/* User Profile Card */}
+                  <div className="flex items-center gap-3 p-2.5 rounded-2xl bg-gradient-to-br from-[#f5f3ff] via-[#faf8ff] to-[#f0fdf4] border border-[#8c90f6]/20 shadow-xs">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#4221b6] to-[#78fd7d] text-white flex items-center justify-center font-black text-lg shadow-sm shrink-0 overflow-hidden">
+                      {user.picture ? (
+                        <img src={user.picture} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        <span>{user.parentName ? user.parentName.charAt(0).toUpperCase() : (user.email ? user.email.charAt(0).toUpperCase() : '👤')}</span>
+                      )}
+                    </div>
+                    <div className="flex flex-col min-w-0 text-left rtl:text-right">
+                      <span className="text-sm font-black text-[#1c0576] truncate">
+                        {user.parentName || (user.email ? user.email.split('@')[0] : 'Compte')}
+                      </span>
+                      <span className="text-[11px] text-slate-500 font-medium truncate" title={user.email}>
+                        {user.email}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Badges / Extra info */}
+                  <div className="flex flex-wrap items-center gap-1.5 mt-2.5 px-1">
                     {formatRoleLabel(user.role || user.roles).map((rb, rIdx) => (
                       <span
                         key={rIdx}
-                        className={`text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider shrink-0 ${rb.color}`}
+                        className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${rb.color}`}
                       >
                         {rb.label}
                       </span>
                     ))}
-                  </div>
-
-                  <div className="flex items-center gap-1 text-[11px] text-slate-500 font-semibold truncate leading-tight mt-0.5">
-                    <span className="truncate" title={user.email}>{user.email}</span>
                     {user.childName && (
-                      <span className="text-[10px] text-slate-400 font-medium shrink-0">
-                        • {user.childName}
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                        👶 {user.childName}
                       </span>
                     )}
                   </div>
+
+                  {/* Navigation Links inside Dropdown */}
+                  <div className="mt-3 pt-2.5 border-t border-slate-100 flex flex-col gap-1">
+                    {isAdmin && (
+                      <Link
+                        to="/admin"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:text-[#4221b6] hover:bg-violet-50 transition-colors"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-base text-[#4221b6]">admin_panel_settings</span>
+                          <span>{lang === 'ar' ? 'لوحة التحكم والإدارة' : 'Espace Administration'}</span>
+                        </span>
+                        <span className="material-symbols-outlined text-xs rtl:rotate-180">arrow_forward</span>
+                      </Link>
+                    )}
+
+                    <Link
+                      to="/dashboard"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:text-[#4221b6] hover:bg-violet-50 transition-colors"
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-base text-emerald-600">school</span>
+                        <span>{lang === 'ar' ? 'لوحة التعلّم والدروس' : 'Espace Élève & Cours'}</span>
+                      </span>
+                      <span className="material-symbols-outlined text-xs rtl:rotate-180">arrow_forward</span>
+                    </Link>
+
+                    <Link
+                      to="/parent"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:text-[#4221b6] hover:bg-violet-50 transition-colors"
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-base text-amber-500">family_restroom</span>
+                        <span>{lang === 'ar' ? 'مساحة الولي والمتابعة' : 'Espace Parent'}</span>
+                      </span>
+                      <span className="material-symbols-outlined text-xs rtl:rotate-180">arrow_forward</span>
+                    </Link>
+                  </div>
+
+                  {/* Logout Button */}
+                  <div className="mt-2.5 pt-2 border-t border-slate-100">
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-red-50 hover:bg-red-600 text-red-600 hover:text-white font-bold text-xs transition-all cursor-pointer shadow-xs active:scale-[0.99] group"
+                    >
+                      <span className="material-symbols-outlined text-base group-hover:rotate-180 transition-transform">logout</span>
+                      <span>{lang === 'ar' ? 'تسجيل الخروج' : lang === 'en' ? 'Log out' : 'Déconnexion'}</span>
+                    </button>
+                  </div>
                 </div>
-
-                {/* Vertical Divider */}
-                <div className="h-6 w-px bg-slate-200 shrink-0 mx-0.5"></div>
-
-                {/* Logout Button */}
-                <button
-                  onClick={handleLogout}
-                  title={lang === 'ar' ? 'تسجيل الخروج' : lang === 'en' ? 'Log out' : 'Déconnexion'}
-                  className="w-8 h-8 rounded-xl bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center cursor-pointer shrink-0 hover:scale-105 active:scale-95 border border-red-100 shadow-xs"
-                >
-                  <span className="material-symbols-outlined text-base">logout</span>
-                </button>
-              </div>
+              )}
             </div>
           ) : isAdminPath ? (
             <div className="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-label-bold text-label-bold shadow-md cursor-pointer font-bold hover:scale-105 transition-transform hide-on-471">
@@ -708,32 +805,22 @@ export default function Navbar() {
               {/* Quick Actions (Language & User Profile / Logout) */}
               <div className="pt-2.5 border-t border-slate-100 flex flex-col gap-2">
                 {/* Language Selector in Menu */}
-                <div className="flex items-center justify-between p-2 rounded-xl bg-[#faf9f5] border border-slate-200/60">
-                  <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-base text-[#4221b6]">language</span>
-                    {lang === 'ar' ? 'اللغة' : lang === 'en' ? 'Language' : 'Langue'}
+                <button
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    setIsLangModalOpen(true);
+                  }}
+                  className="w-full flex items-center justify-between p-2.5 rounded-xl bg-[#faf9f5] hover:bg-violet-50 border border-slate-200/60 hover:border-[#4221b6]/30 transition-all cursor-pointer group text-left rtl:text-right"
+                >
+                  <span className="text-xs font-bold text-slate-700 group-hover:text-[#4221b6] flex items-center gap-2">
+                    <span className="material-symbols-outlined text-lg text-[#4221b6]">public</span>
+                    <span>{lang === 'ar' ? 'تغيير لغة المنصة' : lang === 'en' ? 'Change platform language' : 'Changer la langue'}</span>
                   </span>
-                  <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-slate-200 shadow-xs">
-                    <button
-                      onClick={() => setLang('fr')}
-                      className={`px-2 py-0.5 text-[10px] rounded-md font-black transition-all cursor-pointer ${lang === 'fr' ? 'bg-[#b0fdb5] text-[#0d4013] shadow-xs scale-105' : 'text-slate-600 hover:text-[#4221b6]'}`}
-                    >
-                      FR
-                    </button>
-                    <button
-                      onClick={() => setLang('ar')}
-                      className={`px-2 py-0.5 text-[10px] rounded-md font-black transition-all cursor-pointer ${lang === 'ar' ? 'bg-[#b0fdb5] text-[#0d4013] shadow-xs scale-105' : 'text-slate-600 hover:text-[#4221b6]'}`}
-                    >
-                      AR
-                    </button>
-                    <button
-                      onClick={() => setLang('en')}
-                      className={`px-2 py-0.5 text-[10px] rounded-md font-black transition-all cursor-pointer ${lang === 'en' ? 'bg-[#b0fdb5] text-[#0d4013] shadow-xs scale-105' : 'text-slate-600 hover:text-[#4221b6]'}`}
-                    >
-                      EN
-                    </button>
-                  </div>
-                </div>
+                  <span className="px-2 py-0.5 rounded-md bg-[#e0d7ff] text-[#4221b6] font-black text-xs uppercase flex items-center gap-1">
+                    <span>{lang}</span>
+                    <span className="material-symbols-outlined text-xs rtl:rotate-180">arrow_forward</span>
+                  </span>
+                </button>
 
                 {/* User Profile & Logout Section in Menu */}
                 {user ? (
@@ -799,6 +886,116 @@ export default function Navbar() {
       {/* Edit Nav Titles Modal */}
       {isEditNavOpen && (
         <EditNavModal onClose={() => setIsEditNavOpen(false)} />
+      )}
+
+      {/* Language Selection Modal */}
+      {isLangModalOpen && createPortal(
+        <div 
+          className="fixed inset-0 z-[9999] bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setIsLangModalOpen(false)}
+        >
+          <div 
+            className="bg-white rounded-3xl border border-slate-100 shadow-2xl max-w-sm sm:max-w-md w-full p-5 sm:p-6 text-center animate-in zoom-in-95 duration-200 relative overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+            dir={isRtl ? 'rtl' : 'ltr'}
+          >
+            {/* Header Icon */}
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-[#4221b6] to-[#6d44f5] text-white flex items-center justify-center shadow-lg shadow-[#4221b6]/25 mb-3.5">
+              <span className="material-symbols-outlined text-3xl">public</span>
+            </div>
+
+            {/* Title & Subtitle */}
+            <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
+              {lang === 'ar' ? 'اختر لغة المنصة' : lang === 'en' ? 'Choose Platform Language' : 'Choisir la langue'}
+            </h3>
+            <p className="text-xs text-slate-500 font-medium mt-1 mb-5">
+              {lang === 'ar' 
+                ? 'حدد اللغة المفضلة لتصفح الموقع والدروس' 
+                : lang === 'en'
+                ? 'Select your preferred language for navigation'
+                : 'Sélectionnez votre langue pour une expérience personnalisée'}
+            </p>
+
+            {/* Language Options */}
+            <div className="flex flex-col gap-2.5">
+              {[
+                {
+                  code: 'fr',
+                  name: 'Français',
+                  native: 'Français',
+                  flag: '🇫🇷',
+                  desc: lang === 'ar' ? 'اللغة الفرنسية للدروس والمحتوى' : 'Langue officielle des cours'
+                },
+                {
+                  code: 'ar',
+                  name: 'العربية',
+                  native: 'العربية',
+                  flag: '🌍',
+                  desc: lang === 'ar' ? 'التصفح والمحتوى باللغة العربية' : 'Interface en langue arabe'
+                },
+                {
+                  code: 'en',
+                  name: 'English',
+                  native: 'English',
+                  flag: '🇬🇧',
+                  desc: lang === 'ar' ? 'التصفح باللغة الإنجليزية' : 'English interface & lessons'
+                }
+              ].map((item) => {
+                const isSelected = lang === item.code;
+                return (
+                  <button
+                    key={item.code}
+                    onClick={() => {
+                      setLang(item.code);
+                      setIsLangModalOpen(false);
+                    }}
+                    className={`w-full p-3 rounded-2xl border-2 transition-all flex items-center justify-between gap-3 cursor-pointer ${
+                      isSelected
+                        ? 'border-[#4221b6] bg-gradient-to-r from-violet-50/80 to-indigo-50/50 shadow-sm scale-[1.01]'
+                        : 'border-slate-100 bg-slate-50/70 hover:bg-slate-100/70 hover:border-slate-200'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl shrink-0 p-1 bg-white rounded-xl shadow-xs border border-slate-100">
+                        {item.flag}
+                      </span>
+                      <div className="text-left rtl:text-right">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-sm font-black ${isSelected ? 'text-[#4221b6]' : 'text-slate-800'}`}>
+                            {item.native}
+                          </span>
+                          {isSelected && (
+                            <span className="px-2 py-0.5 text-[10px] font-black rounded-full bg-[#4221b6] text-white">
+                              {lang === 'ar' ? 'الحالية' : 'Active'}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[11px] text-slate-500 font-medium block">
+                          {item.desc}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+                      isSelected ? 'bg-[#4221b6] text-white' : 'border-2 border-slate-300'
+                    }`}>
+                      {isSelected && <span className="material-symbols-outlined text-sm font-bold">check</span>}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Close Button */}
+            <button
+              onClick={() => setIsLangModalOpen(false)}
+              className="mt-5 w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+            >
+              {lang === 'ar' ? 'إغلاق' : 'Fermer'}
+            </button>
+          </div>
+        </div>,
+        document.body
       )}
     </header>
   );

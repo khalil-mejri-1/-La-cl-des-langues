@@ -34,7 +34,6 @@ export default function HomePage() {
   // Form Fields State
   const [parentName, setParentName] = useState('');
   const [childName, setChildName] = useState('');
-  const [childAge, setChildAge] = useState('5 ans');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -73,7 +72,7 @@ export default function HomePage() {
       : `${API_BASE_URL}/api/auth/login`;
 
     const payload = authMode === 'signup'
-      ? { parentName, childName, childAge, email, password }
+      ? { parentName, childName, email, password }
       : { email, password };
 
     try {
@@ -364,37 +363,20 @@ export default function HomePage() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs font-bold text-[#2C3E2E] mb-1.5">
-                            {t.authPage?.childNameLabel}
-                          </label>
-                          <div className="relative">
-                            <span className="material-symbols-outlined absolute left-4 rtl:left-auto rtl:right-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-base">mood</span>
-                            <input
-                              type="text"
-                              required
-                              value={childName}
-                              onChange={(e) => setChildName(e.target.value)}
-                              placeholder={t.authPage?.childNamePlaceholder}
-                              className="w-full h-12 pl-11 pr-4 rtl:pl-4 rtl:pr-11 rounded-full border border-surface-variant/70 bg-[#F4F1EA] text-xs font-medium focus:border-[#4221b6] outline-none"
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-bold text-[#2C3E2E] mb-1.5">
-                            {t.authPage?.childAgeLabel}
-                          </label>
-                          <select
-                            value={childAge}
-                            onChange={(e) => setChildAge(e.target.value)}
-                            className="w-full h-12 px-4 rounded-full border border-surface-variant/70 bg-[#F4F1EA] text-xs font-medium focus:border-[#4221b6] outline-none cursor-pointer"
-                          >
-                            {t.authPage?.ageOptions?.map((opt, idx) => (
-                              <option key={idx} value={opt}>{opt}</option>
-                            ))}
-                          </select>
+                      <div>
+                        <label className="block text-xs font-bold text-[#2C3E2E] mb-1.5">
+                          {t.authPage?.childNameLabel}
+                        </label>
+                        <div className="relative">
+                          <span className="material-symbols-outlined absolute left-4 rtl:left-auto rtl:right-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-base">mood</span>
+                          <input
+                            type="text"
+                            required
+                            value={childName}
+                            onChange={(e) => setChildName(e.target.value)}
+                            placeholder={t.authPage?.childNamePlaceholder}
+                            className="w-full h-12 pl-11 pr-4 rtl:pl-4 rtl:pr-11 rounded-full border border-surface-variant/70 bg-[#F4F1EA] text-xs font-medium focus:border-[#4221b6] outline-none"
+                          />
                         </div>
                       </div>
                     </>

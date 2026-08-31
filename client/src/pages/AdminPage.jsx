@@ -1307,11 +1307,6 @@ export default function AdminPage() {
                                 </span>
                               </div>
                               <p className="text-xs text-slate-500 font-semibold mt-1 flex items-center gap-2 flex-wrap">
-                                {group.childAge && (
-                                  <span className="bg-white/80 px-2 py-0.5 rounded-md border border-slate-200">
-                                    {lang === 'ar' ? `العمر: ${group.childAge}` : `Âge : ${group.childAge}`}
-                                  </span>
-                                )}
                                 {group.parentName && (
                                   <span className="bg-white/80 px-2 py-0.5 rounded-md border border-slate-200">
                                     {lang === 'ar' ? `الولي: ${group.parentName}` : `Parent : ${group.parentName}`}
@@ -1553,7 +1548,7 @@ export default function AdminPage() {
 
               {loadingClients ? (
                 <div className="p-4 bg-white">
-                  <TableRowsSkeleton rows={5} cols={6} />
+                  <TableRowsSkeleton rows={5} cols={5} />
                 </div>
               ) : (
                 <div class="overflow-x-auto">
@@ -1562,7 +1557,6 @@ export default function AdminPage() {
                       <tr class="bg-surface-container-low text-on-surface-variant text-label-bold uppercase tracking-wider text-xs">
                         <th class="p-4 border-b border-surface-variant">Parent</th>
                         <th class="p-4 border-b border-surface-variant">Enfant</th>
-                        <th class="p-4 border-b border-surface-variant">Âge</th>
                         <th class="p-4 border-b border-surface-variant">E-mail</th>
                         <th class="p-4 border-b border-surface-variant">Rôle</th>
                         <th class="p-4 border-b border-surface-variant text-right">Actions</th>
@@ -1593,7 +1587,6 @@ export default function AdminPage() {
                               </div>
                             </td>
                             <td class="p-4 text-on-surface text-sm font-semibold">{client.childName || 'Non spécifié'}</td>
-                            <td class="p-4 text-on-surface-variant text-sm font-medium">{client.childAge || '5 ans'}</td>
                             <td class="p-4 text-on-surface-variant text-sm font-medium">{client.email}</td>
                             <td className="p-4">
                               {/* Clickable Multi-Role Badges Container */}

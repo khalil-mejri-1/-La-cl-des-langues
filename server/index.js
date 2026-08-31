@@ -142,7 +142,7 @@ app.post("/api/auth/google", async (req, res) => {
       user = new User({
         parentName: name || cleanEmail.split('@')[0],
         childName: '',
-        childAge: '5 ans',
+        childAge: '',
         email: cleanEmail,
         password: Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10),
         googleId: googleId || '',

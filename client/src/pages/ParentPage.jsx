@@ -263,7 +263,7 @@ export default function ParentPage() {
               {user?.parentName || t.parentPage?.accountType}
             </div>
             <div className="text-sm text-tertiary font-bold">
-              {user?.childName ? `${user.childName} • ${user.childAge || '6 ans'}` : t.parentPage?.accountBadge}
+              {user?.childName ? user.childName : t.parentPage?.accountBadge}
             </div>
           </div>
         </div>

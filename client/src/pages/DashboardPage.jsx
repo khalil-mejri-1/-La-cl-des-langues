@@ -313,7 +313,6 @@ export default function DashboardPage() {
       studentName: user?.childName || user?.parentName || (user?.email ? user.email.split('@')[0] : 'Élève'),
       parentName: user?.parentName || (user?.email ? user.email.split('@')[0] : 'Parent'),
       childName: user?.childName || '',
-      childAge: user?.childAge || '6 ans',
       studentEmail: user?.email || '',
       studentId: user?.id || user?._id || '',
       teacherId: String(selectedTeacher.teacherId || selectedTeacher.id || ''),

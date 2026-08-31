@@ -18,7 +18,6 @@ export default function AuthPage() {
   // Form Fields State
   const [parentName, setParentName] = useState('');
   const [childName, setChildName] = useState('');
-  const [childAge, setChildAge] = useState('5 ans');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -64,7 +63,7 @@ export default function AuthPage() {
       : `${API_BASE_URL}/api/auth/login`;
 
     const payload = authMode === 'signup'
-      ? { parentName, childName, childAge, email, password }
+      ? { parentName, childName, email, password }
       : { email, password };
 
     try {
@@ -217,37 +216,20 @@ export default function AuthPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-label-bold font-label-bold text-on-surface mb-2 text-sm font-bold">
-                      {t.authPage.childNameLabel}
-                    </label>
-                    <div className="relative">
-                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">child_care</span>
-                      <input
-                        type="text"
-                        required
-                        value={childName}
-                        onChange={(e) => setChildName(e.target.value)}
-                        placeholder={t.authPage.childNamePlaceholder}
-                        className="w-full h-12 pl-10 pr-4 rounded-xl border-2 border-surface-variant bg-surface-container-low focus:border-primary-container outline-none font-body-md"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-label-bold font-label-bold text-on-surface mb-2 text-sm font-bold">
-                      {t.authPage.childAgeLabel}
-                    </label>
-                    <select
-                      value={childAge}
-                      onChange={(e) => setChildAge(e.target.value)}
-                      className="w-full h-12 px-3 rounded-xl border-2 border-surface-variant bg-surface-container-low focus:border-primary-container outline-none font-body-md cursor-pointer text-sm font-medium"
-                    >
-                      {t.authPage.ageOptions.map((opt, idx) => (
-                        <option key={idx} value={opt}>{opt}</option>
-                      ))}
-                    </select>
+                <div>
+                  <label className="block text-label-bold font-label-bold text-on-surface mb-2 text-sm font-bold">
+                    {t.authPage.childNameLabel}
+                  </label>
+                  <div className="relative">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">child_care</span>
+                    <input
+                      type="text"
+                      required
+                      value={childName}
+                      onChange={(e) => setChildName(e.target.value)}
+                      placeholder={t.authPage.childNamePlaceholder}
+                      className="w-full h-12 pl-10 pr-4 rounded-xl border-2 border-surface-variant bg-surface-container-low focus:border-primary-container outline-none font-body-md"
+                    />
                   </div>
                 </div>
               </>

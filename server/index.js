@@ -23,7 +23,7 @@ mongoose
     console.log("🚀 Connecté à MongoDB avec succès !");
     console.log("=========================================");
 
-    // Ensure Admin Account Exists & is Configured
+    // Ensure Admin & Parent Accounts Exist & are Configured
     try {
       const adminEmail = "expert2@gmail.com".toLowerCase();
       const existingAdmin = await User.findOne({ email: adminEmail });
@@ -47,8 +47,32 @@ mongoose
         await newAdmin.save();
         console.log(`✅ Nouveau Compte Admin créé avec succès : ${adminEmail}`);
       }
-    } catch (adminErr) {
-      console.error("Erreur lors de la configuration du compte admin :", adminErr.message);
+
+      // Parent Account (1@gmail.com)
+      const parentEmail = "1@gmail.com".toLowerCase();
+      const existingParent = await User.findOne({ email: parentEmail });
+      if (existingParent) {
+        existingParent.role = "user";
+        existingParent.password = "123456";
+        existingParent.status = "Actif";
+        if (!existingParent.parentName) existingParent.parentName = "Parent";
+        await existingParent.save();
+        console.log(`✅ Compte Parent vérifié et mis à jour : ${parentEmail}`);
+      } else {
+        const newParent = new User({
+          parentName: "Parent",
+          childName: "Élève",
+          childAge: "",
+          email: parentEmail,
+          password: "123456",
+          role: "user",
+          status: "Actif",
+        });
+        await newParent.save();
+        console.log(`✅ Nouveau Compte Parent créé avec succès : ${parentEmail}`);
+      }
+    } catch (authSeedErr) {
+      console.error("Erreur lors de la configuration des comptes :", authSeedErr.message);
     }
   })
   .catch((err) => {

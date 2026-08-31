@@ -597,42 +597,42 @@ export default function Navbar() {
               {/* Dropdown Popover Under the Circle */}
               {isUserMenuOpen && (
                 <div
-                  className={`absolute top-full mt-2.5 w-72 sm:w-80 bg-white rounded-3xl border border-slate-100 shadow-2xl p-4 z-[999] animate-in fade-in zoom-in-95 duration-150 ${
-                    isRtl ? 'left-0 sm:left-auto sm:right-0' : 'right-0 sm:right-auto sm:left-auto'
+                  className={`absolute top-full mt-3 w-72 sm:w-80 max-w-[calc(100vw-1.5rem)] bg-white rounded-3xl border border-slate-100 shadow-2xl p-4 z-[999] animate-in fade-in zoom-in-95 duration-150 ${
+                    isRtl ? 'left-0' : 'right-0'
                   }`}
                   dir={isRtl ? 'rtl' : 'ltr'}
                 >
                   {/* User Profile Card */}
-                  <div className="flex items-center gap-3 p-2.5 rounded-2xl bg-gradient-to-br from-[#f5f3ff] via-[#faf8ff] to-[#f0fdf4] border border-[#8c90f6]/20 shadow-xs">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#4221b6] to-[#78fd7d] text-white flex items-center justify-center font-black text-lg shadow-sm shrink-0 overflow-hidden">
+                  <div className="flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-br from-[#f5f3ff] via-[#faf8ff] to-[#f0fdf4] border border-[#8c90f6]/25 shadow-xs">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#4221b6] via-[#5d35e0] to-[#78fd7d] text-white flex items-center justify-center font-black text-lg shadow-sm shrink-0 overflow-hidden">
                       {user.picture ? (
                         <img src={user.picture} alt="Avatar" className="w-full h-full object-cover" />
                       ) : (
                         <span>{user.parentName ? user.parentName.charAt(0).toUpperCase() : (user.email ? user.email.charAt(0).toUpperCase() : '👤')}</span>
                       )}
                     </div>
-                    <div className="flex flex-col min-w-0 text-left rtl:text-right">
-                      <span className="text-sm font-black text-[#1c0576] truncate">
+                    <div className="flex flex-col min-w-0 text-left rtl:text-right flex-1">
+                      <span className="text-sm font-black text-[#1c0576] truncate block">
                         {user.parentName || (user.email ? user.email.split('@')[0] : 'Compte')}
                       </span>
-                      <span className="text-[11px] text-slate-500 font-medium truncate" title={user.email}>
+                      <span className="text-xs text-slate-500 font-medium truncate block" title={user.email}>
                         {user.email}
                       </span>
                     </div>
                   </div>
 
                   {/* Badges / Extra info */}
-                  <div className="flex flex-wrap items-center gap-1.5 mt-2.5 px-1">
+                  <div className="flex flex-wrap items-center gap-1.5 mt-2.5 px-0.5">
                     {formatRoleLabel(user.role || user.roles).map((rb, rIdx) => (
                       <span
                         key={rIdx}
-                        className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${rb.color}`}
+                        className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${rb.color}`}
                       >
                         {rb.label}
                       </span>
                     ))}
                     {user.childName && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
                         👶 {user.childName}
                       </span>
                     )}
@@ -644,38 +644,38 @@ export default function Navbar() {
                       <Link
                         to="/admin"
                         onClick={() => setIsUserMenuOpen(false)}
-                        className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:text-[#4221b6] hover:bg-violet-50 transition-colors"
+                        className="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-slate-700 hover:text-[#4221b6] hover:bg-violet-50/80 transition-all group"
                       >
-                        <span className="flex items-center gap-2">
-                          <span className="material-symbols-outlined text-base text-[#4221b6]">admin_panel_settings</span>
+                        <span className="flex items-center gap-2.5">
+                          <span className="material-symbols-outlined text-lg text-[#4221b6] group-hover:scale-110 transition-transform">admin_panel_settings</span>
                           <span>{lang === 'ar' ? 'لوحة التحكم والإدارة' : 'Espace Administration'}</span>
                         </span>
-                        <span className="material-symbols-outlined text-xs rtl:rotate-180">arrow_forward</span>
+                        <span className="material-symbols-outlined text-xs rtl:rotate-180 text-slate-400 group-hover:text-[#4221b6]">arrow_forward</span>
                       </Link>
                     )}
 
                     <Link
                       to="/dashboard"
                       onClick={() => setIsUserMenuOpen(false)}
-                      className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:text-[#4221b6] hover:bg-violet-50 transition-colors"
+                      className="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-slate-700 hover:text-[#4221b6] hover:bg-violet-50/80 transition-all group"
                     >
-                      <span className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-base text-emerald-600">school</span>
+                      <span className="flex items-center gap-2.5">
+                        <span className="material-symbols-outlined text-lg text-emerald-600 group-hover:scale-110 transition-transform">school</span>
                         <span>{lang === 'ar' ? 'لوحة التعلّم والدروس' : 'Espace Élève & Cours'}</span>
                       </span>
-                      <span className="material-symbols-outlined text-xs rtl:rotate-180">arrow_forward</span>
+                      <span className="material-symbols-outlined text-xs rtl:rotate-180 text-slate-400 group-hover:text-[#4221b6]">arrow_forward</span>
                     </Link>
 
                     <Link
                       to="/parent"
                       onClick={() => setIsUserMenuOpen(false)}
-                      className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:text-[#4221b6] hover:bg-violet-50 transition-colors"
+                      className="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-slate-700 hover:text-[#4221b6] hover:bg-violet-50/80 transition-all group"
                     >
-                      <span className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-base text-amber-500">family_restroom</span>
+                      <span className="flex items-center gap-2.5">
+                        <span className="material-symbols-outlined text-lg text-amber-500 group-hover:scale-110 transition-transform">family_restroom</span>
                         <span>{lang === 'ar' ? 'مساحة الولي والمتابعة' : 'Espace Parent'}</span>
                       </span>
-                      <span className="material-symbols-outlined text-xs rtl:rotate-180">arrow_forward</span>
+                      <span className="material-symbols-outlined text-xs rtl:rotate-180 text-slate-400 group-hover:text-[#4221b6]">arrow_forward</span>
                     </Link>
                   </div>
 
@@ -683,7 +683,7 @@ export default function Navbar() {
                   <div className="mt-2.5 pt-2 border-t border-slate-100">
                     <button
                       onClick={handleLogout}
-                      className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-red-50 hover:bg-red-600 text-red-600 hover:text-white font-bold text-xs transition-all cursor-pointer shadow-xs active:scale-[0.99] group"
+                      className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-100 hover:border-red-600 font-bold text-xs transition-all cursor-pointer shadow-xs active:scale-[0.99] group"
                     >
                       <span className="material-symbols-outlined text-base group-hover:rotate-180 transition-transform">logout</span>
                       <span>{lang === 'ar' ? 'تسجيل الخروج' : lang === 'en' ? 'Log out' : 'Déconnexion'}</span>

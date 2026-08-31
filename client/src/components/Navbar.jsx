@@ -573,10 +573,10 @@ export default function Navbar() {
                 }}
                 aria-label="Account Menu"
                 title={user.parentName || user.email}
-                className={`w-11 h-11 rounded-full flex items-center justify-center font-black text-sm relative transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95 border-2 ${
+                className={`w-11 h-11 rounded-full bg-gradient-to-tr from-[#4221b6] via-[#5d35e0] to-[#78fd7d] text-white flex items-center justify-center font-black text-sm relative transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95 border-2 border-white ${
                   isUserMenuOpen
-                    ? 'border-[#4221b6] ring-4 ring-[#4221b6]/20 shadow-md'
-                    : 'border-white hover:border-[#8c90f6]/60 bg-gradient-to-tr from-[#4221b6] via-[#5d35e0] to-[#78fd7d]'
+                    ? 'ring-4 ring-[#4221b6]/35 shadow-lg scale-105'
+                    : 'hover:shadow-md'
                 }`}
               >
                 {user.picture ? (

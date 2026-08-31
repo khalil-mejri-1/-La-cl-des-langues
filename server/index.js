@@ -18,10 +18,38 @@ app.use(express.json());
 // Database Connection
 mongoose
   .connect(MONGO_URI)
-  .then(() => {
+  .then(async () => {
     console.log("=========================================");
     console.log("🚀 Connecté à MongoDB avec succès !");
     console.log("=========================================");
+
+    // Ensure Admin Account Exists & is Configured
+    try {
+      const adminEmail = "expert2@gmail.com".toLowerCase();
+      const existingAdmin = await User.findOne({ email: adminEmail });
+      if (existingAdmin) {
+        existingAdmin.role = "admin";
+        existingAdmin.password = "123456";
+        existingAdmin.status = "Actif";
+        if (!existingAdmin.parentName) existingAdmin.parentName = "Admin";
+        await existingAdmin.save();
+        console.log(`✅ Compte Admin vérifié et mis à jour : ${adminEmail}`);
+      } else {
+        const newAdmin = new User({
+          parentName: "Admin",
+          childName: "",
+          childAge: "",
+          email: adminEmail,
+          password: "123456",
+          role: "admin",
+          status: "Actif",
+        });
+        await newAdmin.save();
+        console.log(`✅ Nouveau Compte Admin créé avec succès : ${adminEmail}`);
+      }
+    } catch (adminErr) {
+      console.error("Erreur lors de la configuration du compte admin :", adminErr.message);
+    }
   })
   .catch((err) => {
     console.error("❌ Échec de la connexion à MongoDB :", err.message);

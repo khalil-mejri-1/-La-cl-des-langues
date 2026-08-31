@@ -722,28 +722,7 @@ export default function CalendarPage() {
         </div>
       ) : null}
 
-      {/* Selected Teacher Banner */}
-      {targetTeacher && (
-        <div className="bg-gradient-to-r from-[#eef2ff] via-white to-[#f0fdf4] p-3.5 sm:p-4 rounded-2xl border-2 border-[#8c90f6]/40 shadow-sm flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-[#4221b6] text-white flex items-center justify-center font-bold text-xl shadow-sm shrink-0">
-              👩‍🏫
-            </div>
-            <div>
-              <span className="text-[11px] font-bold text-slate-500 block uppercase tracking-wider">
-                {lang === 'ar' ? 'المعلمة المختارة' : 'Maîtresse sélectionnée'}
-              </span>
-              <h3 className="text-sm sm:text-base font-extrabold text-[#1c0576]">
-                {targetTeacher.name || targetTeacher.parentName || targetTeacher.email?.split('@')[0]}
-              </h3>
-            </div>
-          </div>
-          <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 bg-emerald-100 px-3 py-1.5 rounded-full border border-emerald-300">
-            <span className="material-symbols-outlined text-sm">event_available</span>
-            <span>{lang === 'ar' ? 'أوقات متوفرة للحجز' : 'Créneaux disponibles'}</span>
-          </span>
-        </div>
-      )}
+
 
       {/* 2. Free Trial Offer Section */}
       <section className="bg-gradient-to-br from-[#f5f3ff] via-[#ffffff] to-[#eef9f2] rounded-3xl p-6 sm:p-8 md:p-10 shadow-xl border-2 border-[#8c90f6]/40 relative overflow-hidden transition-all duration-300">
@@ -1449,19 +1428,19 @@ export default function CalendarPage() {
 
       {/* Success Booking Modal Overlay */}
       {isSuccessOpen && (
-        <div className="fixed inset-0 z-[1000] bg-surface/95 flex flex-col items-center justify-center p-4 sm:p-6 backdrop-blur-sm overflow-y-auto">
-          <div className="text-center space-y-5 max-w-sm sm:max-w-md bg-white p-5 sm:p-8 rounded-3xl border-2 border-[#4221b6] shadow-2xl animate-in zoom-in-95">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-3xl sm:text-4xl shadow-inner animate-bounce">
+        <div className="fixed inset-0 z-[1000] bg-slate-900/60 flex flex-col items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
+          <div className="text-center max-w-sm sm:max-w-md w-full bg-white p-5 sm:p-6 rounded-2xl border border-slate-100 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 mx-auto rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200/80 flex items-center justify-center text-xl sm:text-2xl shadow-xs">
               {isSuccessOpen === 'trial' ? '🎁' : '✓'}
             </div>
             
-            <h2 className="text-2xl sm:text-3xl font-black text-[#1c0576]">
+            <h2 className="text-lg sm:text-xl font-black text-[#1c0576] mt-3">
               {isSuccessOpen === 'trial'
-                ? (lang === 'ar' ? 'تم إرسال طلب الحصة التجريبية المجانية بنجاح ! 🎉' : 'Demande de Séance d\'Essai Envoyée ! 🎉')
+                ? (lang === 'ar' ? 'تم إرسال طلب الحصة التجريبية بنجاح ! 🎉' : 'Demande de Séance d\'Essai Envoyée ! 🎉')
                 : (lang === 'ar' ? 'تم تأكيد حجز الباقة (4 حصص) بنجاح ! 🎉' : 'Réservation du Pack (4 séances) réussie ! 🎉')}
             </h2>
             
-            <p className="text-xs sm:text-sm text-slate-600 font-medium">
+            <p className="text-xs text-slate-500 font-medium mt-1">
               {isSuccessOpen === 'trial'
                 ? (lang === 'ar'
                     ? `تم إرسال طلب موعد حصتك التجريبية المجانية بنجاح للأستاذة ${targetTeacher?.name || targetTeacher?.parentName || 'المعلمة'}:`
@@ -1472,27 +1451,27 @@ export default function CalendarPage() {
             </p>
 
             {isSuccessOpen === 'trial' ? (
-              <div className="p-4 bg-emerald-50 border-2 border-emerald-300 rounded-2xl flex items-center justify-center gap-3">
-                <span className="material-symbols-outlined text-emerald-600 text-2xl">event_available</span>
+              <div className="p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-xl flex items-center justify-center gap-2.5 my-3.5">
+                <span className="material-symbols-outlined text-emerald-600 text-xl">event_available</span>
                 <div className="text-left rtl:text-right">
-                  <span className="text-xs sm:text-sm font-black text-emerald-900 block">
+                  <span className="text-xs font-bold text-emerald-950 block">
                     {getFormattedDayLabel(trialSession.day) || trialSession.day}
                   </span>
-                  <span className="text-xs font-extrabold text-emerald-700">
+                  <span className="text-[11px] font-semibold text-emerald-700">
                     {lang === 'ar' ? `الساعة ${trialSession.time} • مجانية 100%` : `À ${trialSession.time} • 100% Gratuite`}
                   </span>
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left rtl:text-right pt-1">
+              <div className="grid grid-cols-2 gap-2 text-left rtl:text-right my-3.5">
                 {packSessions.map((s, i) => (
-                  <div key={i} className="p-3 bg-[#faf9f5] border border-slate-200 rounded-xl flex items-center gap-2.5">
-                    <span className="w-6 h-6 rounded-full bg-[#4221b6] text-white flex items-center justify-center text-xs font-black shrink-0">
+                  <div key={i} className="p-2 sm:p-2.5 bg-slate-50 border border-slate-200/70 hover:border-[#4221b6]/30 rounded-xl flex items-center gap-2 transition-colors">
+                    <span className="w-5 h-5 rounded-full bg-[#4221b6] text-white flex items-center justify-center text-[10px] font-black shrink-0">
                       {i + 1}
                     </span>
-                    <div>
-                      <span className="text-xs font-black text-slate-900 block">{getFormattedDayLabel(s.day) || s.day}</span>
-                      <span className="text-[11px] font-bold text-[#4221b6]">{s.time}</span>
+                    <div className="min-w-0">
+                      <span className="text-[11px] font-bold text-slate-800 block truncate">{getFormattedDayLabel(s.day) || s.day}</span>
+                      <span className="text-[10px] font-semibold text-[#4221b6]">{s.time}</span>
                     </div>
                   </div>
                 ))}
@@ -1501,10 +1480,10 @@ export default function CalendarPage() {
 
             <button
               onClick={() => { setIsSuccessOpen(false); navigate('/dashboard'); }}
-              className="mt-4 w-full bg-[#4221b6] text-white font-black text-sm py-4 rounded-2xl shadow-lg hover:scale-105 transition-transform flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full bg-[#4221b6] hover:bg-[#35189b] text-white font-black text-xs sm:text-sm py-3 px-4 rounded-xl shadow-md shadow-[#4221b6]/20 hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
             >
               <span>{lang === 'ar' ? 'الانتقال إلى لوحة الطالب (Dashboard)' : 'Accéder à mon espace Dashboard'}</span>
-              <span className="material-symbols-outlined text-lg">arrow_forward</span>
+              <span className="material-symbols-outlined text-base rtl:rotate-180">arrow_forward</span>
             </button>
           </div>
         </div>

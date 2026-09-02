@@ -37,6 +37,19 @@ export default function CalendarPage() {
   const [trialSession, setTrialSession] = useState({ day: '', time: '', isBooked: false });
   const [copiedWhatsapp, setCopiedWhatsapp] = useState(false);
 
+  // Mandatory Student Contact / Phone Number State
+  const [studentPhone, setStudentPhone] = useState(() => {
+    return user?.phone || user?.studentPhone || localStorage.getItem('last_student_phone') || '';
+  });
+  const [phoneError, setPhoneError] = useState('');
+  const phoneInputRef = React.useRef(null);
+
+  useEffect(() => {
+    if (user?.phone && !studentPhone) {
+      setStudentPhone(user.phone);
+    }
+  }, [user?.phone]);
+
   const handleCopyWhatsapp = (num) => {
     try {
       navigator.clipboard.writeText(num);
@@ -221,9 +234,16 @@ export default function CalendarPage() {
 
   // Modal & Date Picker state for session scheduling
   const [modalSessionIndex, setModalSessionIndex] = useState(null); // null or session index 0,1,2,3
-  const [modalStep, setModalStep] = useState('date'); // 'date' | 'time'
+  const [modalStep, setModalStep] = useState('date'); // 'date' | 'time' | 'phone'
   const [tempSelectedDate, setTempSelectedDate] = useState(''); // 'YYYY-MM-DD'
+  const [tempSelectedTime, setTempSelectedTime] = useState(''); // '14:00'
   const [currentCalMonth, setCurrentCalMonth] = useState(new Date());
+
+  // Phone Validation Helper
+  const isPhoneValid = (phone) => {
+    const digitsOnly = String(phone || '').replace(/\D/g, '');
+    return digitsOnly.length >= 6;
+  };
 
   // Blocked dates from target teacher / user
   const teacherBlockedDates = effectiveTeacher?.blockedDates || user?.blockedDates || [];
@@ -259,6 +279,7 @@ export default function CalendarPage() {
     setModalSessionIndex('trial');
     setModalStep('date');
     setTempSelectedDate(trialSession.day || packSessions[0]?.day || '');
+    setTempSelectedTime(trialSession.time || packSessions[0]?.time || '');
   };
 
   // Open scheduling modal for specific session index
@@ -267,6 +288,7 @@ export default function CalendarPage() {
     setModalSessionIndex(index);
     setModalStep('date');
     setTempSelectedDate(packSessions[index]?.day || '');
+    setTempSelectedTime(packSessions[index]?.time || '');
   };
 
   // Select Date from Calendar Grid inside Modal
@@ -282,7 +304,15 @@ export default function CalendarPage() {
 
     if (modalSessionIndex === 'trial') {
       const selectedDay = tempSelectedDate;
-      // Close the modal immediately in 0ms
+      setTempSelectedTime(timeSlot);
+      const cleanPhone = (studentPhone || '').trim();
+
+      // If phone is missing, prompt directly in the modal step 'phone'
+      if (!isPhoneValid(cleanPhone)) {
+        setModalStep('phone');
+        return;
+      }
+
       setModalSessionIndex(null);
       setTrialSession({ day: selectedDay, time: timeSlot, isBooked: true });
       setPackSessions(prev => {
@@ -290,7 +320,7 @@ export default function CalendarPage() {
         updated[0] = { ...updated[0], day: selectedDay, time: timeSlot };
         return updated;
       });
-      await handleConfirmTrialReservation(selectedDay, timeSlot);
+      await handleConfirmTrialReservation(selectedDay, timeSlot, cleanPhone);
       return;
     }
     
@@ -312,6 +342,28 @@ export default function CalendarPage() {
 
     // Close modal
     setModalSessionIndex(null);
+  };
+
+  // Confirm Trial reservation when phone is submitted from modal
+  const handleConfirmTrialWithPhone = async (dayToBook, timeToBook) => {
+    const cleanPhone = (studentPhone || '').trim();
+    if (!isPhoneValid(cleanPhone)) {
+      setPhoneError(
+        lang === 'ar'
+          ? '⚠️ يرجى إدخال رقم هاتف صحيح (6 أرقام على الأقل).'
+          : '⚠️ Veuillez saisir un numéro de téléphone valide.'
+      );
+      return;
+    }
+    setPhoneError('');
+    setModalSessionIndex(null);
+    setTrialSession({ day: dayToBook, time: timeToBook, isBooked: true });
+    setPackSessions(prev => {
+      const updated = [...prev];
+      updated[0] = { ...updated[0], day: dayToBook, time: timeToBook };
+      return updated;
+    });
+    await handleConfirmTrialReservation(dayToBook, timeToBook, cleanPhone);
   };
 
   // Helper: check if a time slot is already taken on tempSelectedDate by another session
@@ -401,7 +453,33 @@ export default function CalendarPage() {
   };
 
   // Submit Free Trial reservation directly to MongoDB & notify teacher/admin
-  const handleConfirmTrialReservation = async (chosenDay, chosenTime) => {
+  const handleConfirmTrialReservation = async (chosenDay, chosenTime, phoneOverride) => {
+    const rawPhone = (phoneOverride !== undefined ? phoneOverride : studentPhone) || '';
+    const cleanPhone = rawPhone.trim();
+
+    if (!isPhoneValid(cleanPhone)) {
+      setPhoneError(
+        lang === 'ar'
+          ? '⚠️ يرجى إدخال رقم هاتف صحيح (6 أرقام على الأقل) لإرسال تفاصيل الحصة للأستاذ والإدارة.'
+          : '⚠️ Veuillez saisir un numéro de téléphone valide pour transmettre la réservation.'
+      );
+      if (modalSessionIndex === 'trial') {
+        setModalStep('phone');
+      } else {
+        phoneInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        phoneInputRef.current?.focus();
+      }
+      return;
+    }
+    setPhoneError('');
+
+    try {
+      localStorage.setItem('last_student_phone', cleanPhone);
+      if (user) {
+        updateCurrentUser?.({ phone: cleanPhone });
+      }
+    } catch {}
+
     setBookingLoading(true);
 
     const teacherObj = targetTeacher || (isMaitresse ? user : null) || (teachersList[0] || null);
@@ -418,6 +496,8 @@ export default function CalendarPage() {
       parentName: user?.parentName || (user?.email ? user.email.split('@')[0] : 'Parent'),
       childName: user?.childName || '',
       studentEmail: user?.email || '',
+      studentPhone: cleanPhone,
+      phone: cleanPhone,
       studentId: user?.id || user?._id || '',
       teacherId: String(teacherId),
       teacherName: teacherName,
@@ -475,6 +555,10 @@ export default function CalendarPage() {
       } catch {}
 
       const studentDisplayName = user?.childName || user?.parentName || (user?.email ? user.email.split('@')[0] : 'Élève');
+      const phoneSuffixFr = cleanPhone ? ` (Tél: ${cleanPhone})` : '';
+      const phoneSuffixAr = cleanPhone ? ` (الهاتف: ${cleanPhone})` : '';
+      const phoneSuffixEn = cleanPhone ? ` (Phone: ${cleanPhone})` : '';
+
       createNotification({
         type: 'NEW_SESSION_REQUEST',
         targetRoles: ['admin', 'maitresse'],
@@ -489,14 +573,14 @@ export default function CalendarPage() {
           en: `🎁 New Free Trial Session Request!`,
         },
         desc: {
-          fr: `L'élève ${studentDisplayName} a réservé sa séance d'essai gratuite pour le ${getFormattedDayLabel(dayVal) || dayVal} à ${timeVal} avec ${teacherName}.`,
-          ar: `قام التلميذ ${studentDisplayName} بحجز حصته التجريبية المجانية ليوم ${getFormattedDayLabel(dayVal) || dayVal} الساعة ${timeVal} مع المعلمة ${teacherName}.`,
-          en: `Student ${studentDisplayName} booked a free trial session for ${dayVal} at ${timeVal} with ${teacherName}.`,
+          fr: `L'élève ${studentDisplayName}${phoneSuffixFr} a réservé sa séance d'essai gratuite pour le ${getFormattedDayLabel(dayVal) || dayVal} à ${timeVal} avec ${teacherName}. 📱 Tél: ${cleanPhone}`,
+          ar: `قام التلميذ ${studentDisplayName}${phoneSuffixAr} بحجز حصته التجريبية المجانية ليوم ${getFormattedDayLabel(dayVal) || dayVal} الساعة ${timeVal} مع المعلمة ${teacherName}. 📱 الهاتف: ${cleanPhone}`,
+          en: `Student ${studentDisplayName}${phoneSuffixEn} booked a free trial session for ${dayVal} at ${timeVal} with ${teacherName}. 📱 Phone: ${cleanPhone}`,
         },
         message: {
-          fr: `L'élève ${studentDisplayName} a réservé sa séance d'essai gratuite pour le ${getFormattedDayLabel(dayVal) || dayVal} à ${timeVal} avec ${teacherName}.`,
-          ar: `قام التلميذ ${studentDisplayName} بحجز حصته التجريبية المجانية ليوم ${getFormattedDayLabel(dayVal) || dayVal} الساعة ${timeVal} مع المعلمة ${teacherName}.`,
-          en: `Student ${studentDisplayName} booked a free trial session for ${dayVal} at ${timeVal} with ${teacherName}.`,
+          fr: `L'élève ${studentDisplayName}${phoneSuffixFr} a réservé sa séance d'essai gratuite pour le ${getFormattedDayLabel(dayVal) || dayVal} à ${timeVal} avec ${teacherName}. 📱 Tél: ${cleanPhone}`,
+          ar: `قام التلميذ ${studentDisplayName}${phoneSuffixAr} بحجز حصته التجريبية المجانية ليوم ${getFormattedDayLabel(dayVal) || dayVal} الساعة ${timeVal} مع المعلمة ${teacherName}. 📱 الهاتف: ${cleanPhone}`,
+          en: `Student ${studentDisplayName}${phoneSuffixEn} booked a free trial session for ${dayVal} at ${timeVal} with ${teacherName}. 📱 Phone: ${cleanPhone}`,
         },
         icon: 'card_giftcard',
         iconBg: 'bg-emerald-100 text-emerald-700',
@@ -505,6 +589,7 @@ export default function CalendarPage() {
           sessionId: savedSession?.id || savedSession?._id,
           studentName: studentDisplayName,
           teacherName: teacherName,
+          studentPhone: cleanPhone,
           isTrial: true,
         },
       });
@@ -527,6 +612,26 @@ export default function CalendarPage() {
       return;
     }
 
+    const cleanPhone = (studentPhone || '').trim();
+    if (!isPhoneValid(cleanPhone)) {
+      setPhoneError(
+        lang === 'ar'
+          ? '⚠️ يرجى إدخال رقم هاتف صحيح (6 أرقام على الأقل) لإرسال بيانات الحجز للأستاذ والإدارة.'
+          : '⚠️ Veuillez saisir un numéro de téléphone valide pour transmettre la réservation.'
+      );
+      phoneInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      phoneInputRef.current?.focus();
+      return;
+    }
+    setPhoneError('');
+
+    try {
+      localStorage.setItem('last_student_phone', cleanPhone);
+      if (user) {
+        updateCurrentUser?.({ phone: cleanPhone });
+      }
+    } catch {}
+
     setBookingLoading(true);
 
     const teacherObj = targetTeacher || (isMaitresse ? user : null) || (teachersList[0] || null);
@@ -542,6 +647,8 @@ export default function CalendarPage() {
       parentName: user?.parentName || (user?.email ? user.email.split('@')[0] : 'Parent'),
       childName: user?.childName || '',
       studentEmail: user?.email || '',
+      studentPhone: cleanPhone,
+      phone: cleanPhone,
       studentId: user?.id || user?._id || '',
       teacherId: String(teacherId),
       teacherName: teacherName,
@@ -558,7 +665,7 @@ export default function CalendarPage() {
       const res = await fetch(`${API_BASE_URL}/api/sessions/batch`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessions: sessionsPayload, packId: currentPackId }),
+        body: JSON.stringify({ sessions: sessionsPayload, packId: currentPackId, studentPhone: cleanPhone, phone: cleanPhone }),
       });
 
       let savedSessions = [];
@@ -615,6 +722,10 @@ export default function CalendarPage() {
       } catch {}
 
       const studentDisplayName = user?.childName || user?.parentName || (user?.email ? user.email.split('@')[0] : 'Élève');
+      const phoneSuffixFr = cleanPhone ? ` (Tél: ${cleanPhone})` : '';
+      const phoneSuffixAr = cleanPhone ? ` (الهاتف: ${cleanPhone})` : '';
+      const phoneSuffixEn = cleanPhone ? ` (Phone: ${cleanPhone})` : '';
+
       createNotification({
         type: 'NEW_SESSION_REQUEST',
         targetRoles: ['admin', 'maitresse'],
@@ -629,9 +740,9 @@ export default function CalendarPage() {
           en: `📩 New booking request (4-session pack)`,
         },
         desc: {
-          fr: `${studentDisplayName} a réservé 4 séances avec ${teacherName} (${sessionsPayload[0]?.day} à ${sessionsPayload[0]?.time}...)`,
-          ar: `قام التلميذ ${studentDisplayName} بحجز 4 حصص مع ${teacherName} (${sessionsPayload[0]?.day} الساعة ${sessionsPayload[0]?.time}...)`,
-          en: `${studentDisplayName} booked 4 sessions with ${teacherName} (${sessionsPayload[0]?.day} at ${sessionsPayload[0]?.time}...)`,
+          fr: `${studentDisplayName}${phoneSuffixFr} a réservé 4 séances avec ${teacherName} (${sessionsPayload[0]?.day} à ${sessionsPayload[0]?.time}...). 📱 Tél: ${cleanPhone}`,
+          ar: `قام التلميذ ${studentDisplayName}${phoneSuffixAr} بحجز 4 حصص مع ${teacherName} (${sessionsPayload[0]?.day} الساعة ${sessionsPayload[0]?.time}...). 📱 الهاتف: ${cleanPhone}`,
+          en: `${studentDisplayName}${phoneSuffixEn} booked 4 sessions with ${teacherName} (${sessionsPayload[0]?.day} at ${sessionsPayload[0]?.time}...). 📱 Phone: ${cleanPhone}`,
         },
         icon: 'calendar_month',
         iconBg: 'bg-purple-100 text-purple-700',
@@ -639,6 +750,7 @@ export default function CalendarPage() {
         meta: {
           studentName: studentDisplayName,
           teacherName,
+          studentPhone: cleanPhone,
           sessionsCount: sessionsPayload.length,
         },
       });
@@ -1155,6 +1267,74 @@ export default function CalendarPage() {
         </div>
       </section>
 
+      {/* 4.8. SECTION COORDONNÉES ÉLÈVE & TÉLÉPHONE OBLIGATOIRE */}
+      <section className="bg-gradient-to-br from-[#fbfaff] via-white to-[#f0fdf4] rounded-3xl p-6 sm:p-8 border-2 border-[#8c90f6]/60 shadow-lg space-y-4 relative">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-black text-xl shadow-xs shrink-0">
+              <span className="material-symbols-outlined text-2xl">phone_iphone</span>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base sm:text-lg font-black text-[#1c0576]">
+                  {lang === 'ar' ? 'رقم الهاتف للتواصل والتأكيد *' : 'Numéro de téléphone / WhatsApp *'}
+                </h3>
+                <span className="px-2.5 py-0.5 rounded-full bg-red-100 text-red-800 text-[10px] font-black uppercase tracking-wider">
+                  {lang === 'ar' ? 'إجباري' : 'Obligatoire'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
+                {lang === 'ar'
+                  ? 'سيتم إرسال هذا الرقم وبيانات الحجز مباشرةً إلى المعلمة والإدارة لتأكيد الحصص والتواصل معك.'
+                  : 'Ce numéro sera transmis directement à la maîtresse et à l\'admin pour la confirmation du cours.'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200 self-start sm:self-auto">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>{lang === 'ar' ? 'إرسال فوري للأستاذ والأدمن' : 'Notification instantanée'}</span>
+          </div>
+        </div>
+
+        <div className="max-w-xl space-y-2">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 rtl:left-auto rtl:right-0 pl-3.5 rtl:pl-0 rtl:pr-3.5 flex items-center pointer-events-none text-emerald-600">
+              <span className="material-symbols-outlined text-xl">contact_phone</span>
+            </div>
+            <input
+              ref={phoneInputRef}
+              type="tel"
+              value={studentPhone}
+              onChange={(e) => {
+                setStudentPhone(e.target.value);
+                setPhoneError('');
+              }}
+              placeholder={lang === 'ar' ? 'أدخل رقم هاتفك (مثال: 33069770 أو +974...)' : 'Entrez votre numéro (ex: +974... ou 06...)'}
+              className={`w-full h-13 pl-12 pr-4 rtl:pl-4 rtl:pr-12 rounded-2xl border-2 font-mono font-bold text-sm sm:text-base outline-none transition-all shadow-xs ${
+                phoneError
+                  ? 'border-red-500 bg-red-50/50 text-red-900 focus:ring-4 focus:ring-red-100'
+                  : 'border-emerald-300 bg-white text-slate-900 focus:border-[#4221b6] focus:ring-4 focus:ring-[#8c90f6]/20'
+              }`}
+              dir="ltr"
+            />
+          </div>
+
+          {phoneError && (
+            <div className="flex items-center gap-2 p-2.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold animate-in fade-in">
+              <span className="material-symbols-outlined text-sm shrink-0">error</span>
+              <span>{phoneError}</span>
+            </div>
+          )}
+
+          <p className="text-[11px] text-slate-400 font-medium">
+            {lang === 'ar'
+              ? '💡 يرجى كتابة رقم الهاتف مع مفتاح الدولة إذا كنت خارج قطر لتسهيل التواصل عبر الواتساب.'
+              : '💡 Vous pouvez inclure l\'indicatif de votre pays pour faciliter l\'échange via WhatsApp.'}
+          </p>
+        </div>
+      </section>
+
       {/* 5. CONFIRMATION BUTTON - SHOWN WHEN ALL 4 SESSIONS ARE SCHEDULED */}
       <section className="flex flex-col items-center justify-center mt-4 w-full max-w-xl mx-auto px-3">
         {packSessions.every(s => s.day && s.time) ? (
@@ -1418,6 +1598,80 @@ export default function CalendarPage() {
                     });
                   })()}
                 </div>
+              </div>
+            )}
+
+            {/* STEP 3: PHONE NUMBER INPUT (MANDATORY FOR CONFIRMING SESSION) */}
+            {modalStep === 'phone' && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-200 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2 text-emerald-950 font-bold truncate">
+                    <span className="material-symbols-outlined text-emerald-600 text-base shrink-0">event_available</span>
+                    <span className="truncate">
+                      {getFormattedDayLabel(tempSelectedDate)} {tempSelectedTime ? `à ${tempSelectedTime}` : ''}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setModalStep('time')}
+                    className="text-xs text-[#4221b6] font-black underline cursor-pointer shrink-0 ml-2"
+                  >
+                    {lang === 'ar' ? 'تغيير التوقيت' : 'Changer l\'heure'}
+                  </button>
+                </div>
+
+                <div className="space-y-2 text-left rtl:text-right">
+                  <label className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-emerald-600 text-base">phone_iphone</span>
+                    <span>{lang === 'ar' ? 'رقم الهاتف (واتساب للتواصل والتأكيد) *' : 'Numéro de téléphone WhatsApp *'}</span>
+                  </label>
+                  <input
+                    type="tel"
+                    value={studentPhone}
+                    onChange={(e) => {
+                      setStudentPhone(e.target.value);
+                      setPhoneError('');
+                    }}
+                    placeholder={lang === 'ar' ? 'مثال: 33069770 أو +974...' : 'Ex: +974... ou 06...'}
+                    className={`w-full h-12 px-4 rounded-xl border-2 font-mono font-bold text-sm outline-none transition-all ${
+                      phoneError
+                        ? 'border-red-500 bg-red-50/60 text-red-900'
+                        : 'border-emerald-300 bg-emerald-50/30 text-slate-900 focus:border-[#4221b6] focus:bg-white'
+                    }`}
+                    dir="ltr"
+                    autoFocus
+                  />
+                  {phoneError && (
+                    <p className="text-[11px] font-bold text-red-600 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-xs">error</span>
+                      <span>{phoneError}</span>
+                    </p>
+                  )}
+                  <p className="text-[10px] text-slate-400 font-medium">
+                    {lang === 'ar'
+                      ? '📱 سيتم إرسال هذا الرقم وتفاصيل الحجز فوراً للأستاذة ولإدارة المنصة.'
+                      : '📱 Vos coordonnées seront transmises immédiatement à la maîtresse et à l\'admin.'}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleConfirmTrialWithPhone(tempSelectedDate, tempSelectedTime)}
+                  disabled={bookingLoading}
+                  className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs sm:text-sm shadow-lg transition-all hover:scale-102 active:scale-98 cursor-pointer flex items-center justify-center gap-2 border border-emerald-400/40"
+                >
+                  {bookingLoading ? (
+                    <>
+                      <span>{lang === 'ar' ? 'جاري إرسال الطلب للمعلمة...' : 'Envoi en cours...'}</span>
+                      <span className="material-symbols-outlined animate-spin text-base">progress_activity</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>{lang === 'ar' ? 'تأكيد الحجز وإرسال الطلب للأستاذ والإدارة ✓' : 'Confirmer et envoyer la demande ✓'}</span>
+                      <span className="material-symbols-outlined text-base">send</span>
+                    </>
+                  )}
+                </button>
               </div>
             )}
           </div>

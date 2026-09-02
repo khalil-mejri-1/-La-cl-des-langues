@@ -87,7 +87,7 @@ app.get("/", (req, res) => {
 // Signup Endpoint - Register user in MongoDB
 app.post("/api/auth/signup", async (req, res) => {
   try {
-    const { parentName, childName, childAge, email, password } = req.body;
+    const { parentName, childName, childAge, email, password, phone } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ error: "L'e-mail et le mot de passe sont obligatoires." });
@@ -103,6 +103,7 @@ app.post("/api/auth/signup", async (req, res) => {
       childName,
       childAge,
       email: email.toLowerCase(),
+      phone: phone ? phone.trim() : "",
       password, // In production, hash with bcrypt
     });
 
@@ -115,6 +116,7 @@ app.post("/api/auth/signup", async (req, res) => {
       childName: newUser.childName,
       childAge: newUser.childAge,
       email: newUser.email,
+      phone: newUser.phone || '',
       role: newUser.role || 'user',
       status: newUser.status || 'Actif',
       picture: newUser.picture || '',
@@ -156,6 +158,7 @@ app.post("/api/auth/login", async (req, res) => {
       childName: user.childName,
       childAge: user.childAge,
       email: user.email,
+      phone: user.phone || '',
       role: user.role || 'user',
       status: user.status || 'Actif',
       picture: user.picture || '',
@@ -231,6 +234,7 @@ app.post("/api/auth/google", async (req, res) => {
       childName: user.childName,
       childAge: user.childAge,
       email: user.email,
+      phone: user.phone || '',
       role: user.role || 'user',
       status: user.status || 'Actif',
       picture: user.picture || picture || '',
@@ -277,6 +281,7 @@ app.get("/api/teachers", async (req, res) => {
       _id: t._id,
       name: t.parentName || t.email.split('@')[0],
       email: t.email,
+      phone: t.phone || '',
       role: t.role,
       status: t.status,
       availableDays: t.availableDays && t.availableDays.length > 0
@@ -333,6 +338,7 @@ app.put("/api/teachers/:id/schedule", async (req, res) => {
         _id: teacher._id,
         name: teacher.parentName || teacher.email.split('@')[0],
         email: teacher.email,
+        phone: teacher.phone || '',
         role: teacher.role,
         status: teacher.status,
         availableDays: teacher.availableDays,
@@ -374,6 +380,7 @@ app.get("/api/clients/:id", async (req, res) => {
         childName: client.childName,
         childAge: client.childAge,
         email: client.email,
+        phone: client.phone || '',
         role: client.role || 'user',
         status: client.status || 'Actif',
         picture: client.picture || '',
@@ -411,6 +418,7 @@ app.put("/api/clients/:id/avatar", async (req, res) => {
         childName: client.childName,
         childAge: client.childAge,
         email: client.email,
+        phone: client.phone || '',
         role: client.role || 'user',
         status: client.status || 'Actif',
         picture: client.picture || '',
@@ -422,10 +430,10 @@ app.put("/api/clients/:id/avatar", async (req, res) => {
   }
 });
 
-// Update Client Role & Status Endpoint (including teacher Subject and picture)
+// Update Client Role & Status Endpoint (including teacher Subject, picture and phone)
 app.put("/api/clients/:id/role", async (req, res) => {
   try {
-    const { role, status, subject, picture } = req.body;
+    const { role, status, subject, picture, phone } = req.body;
     const client = await User.findById(req.params.id);
     if (!client) {
       return res.status(404).json({ error: "Client introuvable." });
@@ -434,6 +442,7 @@ app.put("/api/clients/:id/role", async (req, res) => {
     if (status !== undefined) client.status = status;
     if (subject !== undefined) client.subject = subject;
     if (picture !== undefined) client.picture = picture;
+    if (phone !== undefined) client.phone = phone.trim();
     await client.save();
 
     // If subject was provided, synchronize all sessions for this teacher
@@ -677,6 +686,8 @@ app.post("/api/sessions", async (req, res) => {
       childName,
       childAge,
       studentEmail,
+      studentPhone,
+      phone,
       studentId,
       teacherId,
       teacherName,
@@ -694,17 +705,19 @@ app.post("/api/sessions", async (req, res) => {
     }
 
     const assignedPackId = packId || `pack_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const effectivePhone = (studentPhone || phone || "").trim();
 
     const newSession = new Session({
       studentName: studentName || childName || parentName || "Élève",
       parentName: parentName || "",
       childName: childName || "",
       childAge: childAge || "",
-      studentEmail: studentEmail ? studentEmail.toLowerCase() : "",
+      studentEmail: studentEmail ? studentEmail.toLowerCase().trim() : "",
+      studentPhone: effectivePhone,
       studentId: studentId || "",
       teacherId: teacherId || "",
       teacherName: teacherName || "Enseignant",
-      teacherEmail: teacherEmail ? teacherEmail.toLowerCase() : "",
+      teacherEmail: teacherEmail ? teacherEmail.toLowerCase().trim() : "",
       day,
       time,
       datetime: datetime || `${day}, ${time}`,
@@ -716,6 +729,26 @@ app.post("/api/sessions", async (req, res) => {
     });
 
     await newSession.save();
+
+    // Auto-update student's phone in User profile if found
+    if (effectivePhone) {
+      try {
+        const orConditions = [];
+        if (studentId && mongoose.Types.ObjectId.isValid(studentId)) {
+          orConditions.push({ _id: studentId });
+        }
+        if (studentEmail) {
+          orConditions.push({ email: studentEmail.toLowerCase().trim() });
+        }
+        if (orConditions.length > 0) {
+          await User.updateMany({ $or: orConditions }, { $set: { phone: effectivePhone } });
+        }
+      } catch (userUpErr) {
+        console.warn("Could not auto-sync phone to User record:", userUpErr.message);
+      }
+    }
+
+    console.log(`📩 [Nouvelle Réservation] Élève: ${newSession.studentName} | Tél: ${effectivePhone || 'N/A'} | Enseignant: ${newSession.teacherName} | Date: ${newSession.day} à ${newSession.time}`);
 
     res.status(201).json({
       message: "Réservation effectuée avec succès !",
@@ -730,34 +763,63 @@ app.post("/api/sessions", async (req, res) => {
 // POST Batch Create Sessions (e.g. 4-session pack)
 app.post("/api/sessions/batch", async (req, res) => {
   try {
-    const { sessions, packId } = req.body;
+    const { sessions, packId, studentPhone, phone } = req.body;
     if (!sessions || !Array.isArray(sessions) || sessions.length === 0) {
       return res.status(400).json({ error: "La liste des séances est invalide ou vide." });
     }
 
     const batchPackId = packId || `pack_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const topLevelPhone = (studentPhone || phone || "").trim();
 
-    const sessionDocs = sessions.map((s, idx) => ({
-      studentName: s.studentName || s.childName || s.parentName || "Élève",
-      parentName: s.parentName || "",
-      childName: s.childName || "",
-      childAge: s.childAge || "",
-      studentEmail: s.studentEmail ? s.studentEmail.toLowerCase() : "",
-      studentId: s.studentId || "",
-      teacherId: s.teacherId || "",
-      teacherName: s.teacherName || "Enseignant",
-      teacherEmail: s.teacherEmail ? s.teacherEmail.toLowerCase() : "",
-      day: s.day,
-      time: s.time,
-      datetime: s.datetime || `${s.day}, ${s.time}`,
-      subject: s.subject || `Français & Arabe (Séance ${idx + 1}/4)`,
-      status: "pending",
-      meetUrl: "",
-      paymentMethod: s.paymentMethod || "card",
-      packId: s.packId || batchPackId,
-    }));
+    const sessionDocs = sessions.map((s, idx) => {
+      const itemPhone = (s.studentPhone || s.phone || topLevelPhone || "").trim();
+      return {
+        studentName: s.studentName || s.childName || s.parentName || "Élève",
+        parentName: s.parentName || "",
+        childName: s.childName || "",
+        childAge: s.childAge || "",
+        studentEmail: s.studentEmail ? s.studentEmail.toLowerCase().trim() : "",
+        studentPhone: itemPhone,
+        studentId: s.studentId || "",
+        teacherId: s.teacherId || "",
+        teacherName: s.teacherName || "Enseignant",
+        teacherEmail: s.teacherEmail ? s.teacherEmail.toLowerCase().trim() : "",
+        day: s.day,
+        time: s.time,
+        datetime: s.datetime || `${s.day}, ${s.time}`,
+        subject: s.subject || `Français & Arabe (Séance ${idx + 1}/4)`,
+        status: "pending",
+        meetUrl: "",
+        paymentMethod: s.paymentMethod || "card",
+        packId: s.packId || batchPackId,
+      };
+    });
 
     const createdSessions = await Session.insertMany(sessionDocs);
+
+    // Auto-update student's phone in User profile if found
+    const firstEffectivePhone = sessionDocs[0]?.studentPhone;
+    const firstStudentId = sessionDocs[0]?.studentId;
+    const firstStudentEmail = sessionDocs[0]?.studentEmail;
+
+    if (firstEffectivePhone) {
+      try {
+        const orConditions = [];
+        if (firstStudentId && mongoose.Types.ObjectId.isValid(firstStudentId)) {
+          orConditions.push({ _id: firstStudentId });
+        }
+        if (firstStudentEmail) {
+          orConditions.push({ email: firstStudentEmail.toLowerCase().trim() });
+        }
+        if (orConditions.length > 0) {
+          await User.updateMany({ $or: orConditions }, { $set: { phone: firstEffectivePhone } });
+        }
+      } catch (userUpErr) {
+        console.warn("Could not auto-sync phone to User record:", userUpErr.message);
+      }
+    }
+
+    console.log(`📦 [Nouveau Pack Réservé] ${createdSessions.length} séances | Élève: ${sessionDocs[0]?.studentName} | Tél: ${firstEffectivePhone || 'N/A'} | Enseignant: ${sessionDocs[0]?.teacherName}`);
 
     res.status(201).json({
       message: `${createdSessions.length} séances réservées avec succès !`,

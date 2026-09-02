@@ -78,9 +78,14 @@ export const syncSessionsToNotifications = (sessions = [], user = null) => {
     const sTeacherName = (s.teacherName || '').toLowerCase().trim();
     const sStudentId = String(s.studentId || '').trim();
     const sStudentEmail = (s.studentEmail || '').toLowerCase().trim();
+    const studentPhone = (s.studentPhone || s.phone || '').trim();
     const studentDisplayName = s.studentName || s.childName || s.parentName || 'Élève';
     const teacherDisplayName = s.teacherName || 'Maîtresse';
     const timeInfo = s.day ? `${s.day} à ${s.time || '14:00'}` : (s.datetime || 'Date prévue');
+
+    const phoneSuffixFr = studentPhone ? ` 📱 Tél: ${studentPhone}` : '';
+    const phoneSuffixAr = studentPhone ? ` 📱 الهاتف: ${studentPhone}` : '';
+    const phoneSuffixEn = studentPhone ? ` 📱 Phone: ${studentPhone}` : '';
 
     const isMyTeacherSession = isMaitresse && (
       (sTeacherId && userId && sTeacherId === userId) ||
@@ -110,9 +115,9 @@ export const syncSessionsToNotifications = (sessions = [], user = null) => {
           en: `📩 Session Booking Request`,
         },
         desc: {
-          fr: `L'élève ${studentDisplayName} a réservé pour le ${timeInfo} avec ${teacherDisplayName}.`,
-          ar: `طلب التلميذ ${studentDisplayName} حصة ليوم ${timeInfo} مع ${teacherDisplayName}.`,
-          en: `Student ${studentDisplayName} booked for ${timeInfo} with ${teacherDisplayName}.`,
+          fr: `L'élève ${studentDisplayName} a réservé pour le ${timeInfo} avec ${teacherDisplayName}.${phoneSuffixFr}`,
+          ar: `طلب التلميذ ${studentDisplayName} حصة ليوم ${timeInfo} مع ${teacherDisplayName}.${phoneSuffixAr}`,
+          en: `Student ${studentDisplayName} booked for ${timeInfo} with ${teacherDisplayName}.${phoneSuffixEn}`,
         },
         icon: 'calendar_month',
         iconBg: 'bg-[#e0d7ff] text-[#4221b6]',
@@ -122,6 +127,7 @@ export const syncSessionsToNotifications = (sessions = [], user = null) => {
           sessionId: sId,
           studentName: studentDisplayName,
           teacherName: teacherDisplayName,
+          studentPhone: studentPhone,
         },
       });
     }
@@ -151,6 +157,36 @@ export const syncSessionsToNotifications = (sessions = [], user = null) => {
         meta: {
           sessionId: sId,
           meetUrl: s.meetUrl,
+        },
+      });
+    }
+
+    // 3. If student -> session completed notification
+    if (isMyStudentSession && (s.status === 'completed' || s.status === 'done')) {
+      synthesized.push({
+        id: `sess_comp_${sId}`,
+        type: 'SESSION_COMPLETED',
+        targetStudentId: sStudentId,
+        targetStudentEmail: sStudentEmail,
+        targetTeacherName: teacherDisplayName,
+        title: {
+          fr: `🎉 Séance Complétée !`,
+          ar: `🎉 اكتملت الحصة بنجاح !`,
+          en: `🎉 Session Completed!`,
+        },
+        desc: {
+          fr: `La maîtresse ${teacherDisplayName} a marqué votre séance du ${timeInfo} comme complétée. Consultez votre suivi dans l'Espace Parent.`,
+          ar: `أكدت المعلمة ${teacherDisplayName} اكتمال حصتكم ليوم ${timeInfo} بنجاح. تفقد تقرير المتابعة في مساحة الولي.`,
+          en: `Teacher ${teacherDisplayName} marked your session on ${timeInfo} as completed. Check progress in Parent Space.`,
+        },
+        icon: 'verified',
+        iconBg: 'bg-emerald-100 text-emerald-700',
+        link: '/parent',
+        timestamp: s.updatedAt || s.createdAt || new Date().toISOString(),
+        meta: {
+          sessionId: sId,
+          studentName: studentDisplayName,
+          teacherName: teacherDisplayName,
         },
       });
     }
@@ -195,8 +231,8 @@ export const filterNotificationsForUser = (allNotifs = [], user = null) => {
       return false;
     }
 
-    // 3. Student receives ONLY notifications meant for students (e.g. Meet links added for their sessions)
-    if (n.type === 'MEET_LINK_ADDED') {
+    // 3. Student receives ONLY notifications meant for students (Meet links & Completed sessions)
+    if (n.type === 'MEET_LINK_ADDED' || n.type === 'SESSION_COMPLETED') {
       const targetSId = String(n.targetStudentId || '').trim();
       const targetSEmail = (n.targetStudentEmail || '').toLowerCase().trim();
 

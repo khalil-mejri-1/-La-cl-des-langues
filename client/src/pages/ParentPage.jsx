@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import EditSectionModal from '../components/EditSectionModal';
@@ -10,6 +10,8 @@ export default function ParentPage() {
   const { lang, t, isRtl } = useLanguage();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [highlightedSessionId, setHighlightedSessionId] = useState(null);
 
   // Check if user role contains 'admin'
   const isAdmin = (() => {
@@ -124,6 +126,54 @@ export default function ParentPage() {
     };
   }, [user, isAdmin]);
 
+  // Read target session from sessionStorage or URL query
+  useEffect(() => {
+    try {
+      const storedSessId = sessionStorage.getItem('parent_target_session_id');
+      if (storedSessId) {
+        setHighlightedSessionId(String(storedSessId));
+        sessionStorage.removeItem('parent_target_session_id');
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    const sessParam = searchParams.get('sessionId');
+    if (sessParam) {
+      setHighlightedSessionId(String(sessParam));
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    const handleFocus = (e) => {
+      const targetSessId = e.detail?.sessionId || e.detail?.notif?.meta?.sessionId;
+      if (targetSessId) {
+        setHighlightedSessionId(String(targetSessId));
+        fetchUserSessions(true);
+      }
+    };
+    window.addEventListener('parent_focus_session', handleFocus);
+    return () => window.removeEventListener('parent_focus_session', handleFocus);
+  }, []);
+
+  // Auto-scroll to highlighted session row
+  useEffect(() => {
+    if (!highlightedSessionId || sessions.length === 0) return;
+
+    const targetId = String(highlightedSessionId);
+    setTimeout(() => {
+      const el = document.getElementById(`parent_session_${targetId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 300);
+
+    const timer = setTimeout(() => {
+      setHighlightedSessionId(null);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [highlightedSessionId, sessions]);
+
   // ── Helper to calculate next concrete Date object for a session ─────────────
   const DAY_MAP = {
     dimanche: 0, sunday: 0, 'الأحد': 0, 'الاحد': 0,
@@ -211,8 +261,8 @@ export default function ParentPage() {
   const closestSession = closestItem?.session || null;
   const closestDateObj = closestItem?.dateObj || null;
 
-  // Session is unlocked if current time is within 15 minutes before the session time or during the session
-  const isUnlocked = closestDateObj ? (currentTime.getTime() >= closestDateObj.getTime() - 15 * 60 * 1000) : false;
+  // Session is unlocked EXACTLY when current time reaches or passes the session time
+  const isUnlocked = closestDateObj ? (currentTime.getTime() >= closestDateObj.getTime()) : false;
 
   // Calculate formatted times
   const formattedStartTime = closestDateObj
@@ -322,11 +372,30 @@ export default function ParentPage() {
                     sessions.slice(0, 10).map((session, sIdx) => {
                       const sessionDateTime = session.datetime || (session.day ? `${session.day}, ${session.time}` : 'Date');
                       const hasMeet = Boolean(session.meetUrl) || session.status === 'meet_added';
+                      const sessionIdStr = String(session._id || session.id || sIdx);
+                      const isHighlighted = highlightedSessionId && (
+                        sessionIdStr === String(highlightedSessionId) ||
+                        String(session._id) === String(highlightedSessionId) ||
+                        String(session.id) === String(highlightedSessionId)
+                      );
 
                       return (
-                        <tr key={session._id || session.id || sIdx} className="hover:bg-surface-container-low transition-colors">
+                        <tr
+                          id={`parent_session_${sessionIdStr}`}
+                          key={session._id || session.id || sIdx}
+                          className={`transition-all duration-300 ${
+                            isHighlighted
+                              ? 'bg-gradient-to-r from-emerald-100 via-emerald-50 to-teal-50 ring-1 ring-emerald-500 font-extrabold shadow-sm'
+                              : 'hover:bg-surface-container-low'
+                          }`}
+                        >
                           <td className="py-4 font-bold text-xs sm:text-sm text-slate-800">
-                            {sessionDateTime}
+                            <div className="flex items-center gap-2">
+                              {isHighlighted && (
+                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-ping shrink-0"></span>
+                              )}
+                              <span>{sessionDateTime}</span>
+                            </div>
                           </td>
                           <td className="py-4 text-xs sm:text-sm font-semibold text-slate-600">
                             {session.subject || 'Français & Arabe'}
@@ -339,9 +408,13 @@ export default function ParentPage() {
                           </td>
                           <td className="py-4">
                             {session.status === 'completed' || session.status === 'done' ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-emerald-50 text-emerald-800 border border-emerald-200">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-                                <span>{lang === 'ar' ? 'مكتملة' : 'Complété'}</span>
+                              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black shadow-xs ${
+                                isHighlighted
+                                  ? 'bg-emerald-600 text-white animate-pulse ring-2 ring-white shadow-md'
+                                  : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                              }`}>
+                                <span className="material-symbols-outlined text-xs">verified</span>
+                                <span>{lang === 'ar' ? 'مكتملة بنجاح ✅' : 'Complété ✅'}</span>
                               </span>
                             ) : hasMeet ? (
                               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-blue-50 text-blue-800 border border-blue-200">
@@ -451,8 +524,8 @@ export default function ParentPage() {
                         <span className="material-symbols-outlined text-xs text-[#4221b6]">info</span>
                         <span>
                           {lang === 'ar'
-                            ? 'سيفتح الزر تلقائياً قبل 15 دقيقة من بداية الحصة'
-                            : 'Le bouton s\'activera 15 min avant le début du cours'}
+                            ? 'سيفتح الزر تلقائياً في موعد بداية الحصة بالضبط'
+                            : 'Le bouton s\'activera exactement à l\'heure du cours'}
                         </span>
                       </p>
                     </div>

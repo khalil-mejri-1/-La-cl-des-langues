@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import EditSectionModal from '../components/EditSectionModal';
@@ -12,6 +12,8 @@ export default function DashboardPage() {
   const { lang, t, isRtl, customSections } = useLanguage();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [highlightedSessionId, setHighlightedSessionId] = useState(null);
 
   // Check if user role contains 'admin'
   const isAdmin = (() => {
@@ -262,6 +264,54 @@ export default function DashboardPage() {
     };
   }, [user, lang, customSections]);
 
+  // Read target session from sessionStorage or URL query
+  useEffect(() => {
+    try {
+      const storedSessId = sessionStorage.getItem('student_target_session_id');
+      if (storedSessId) {
+        setHighlightedSessionId(String(storedSessId));
+        sessionStorage.removeItem('student_target_session_id');
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    const sessParam = searchParams.get('sessionId');
+    if (sessParam) {
+      setHighlightedSessionId(String(sessParam));
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    const handleFocus = (e) => {
+      const targetSessId = e.detail?.sessionId || e.detail?.notif?.meta?.sessionId;
+      if (targetSessId) {
+        setHighlightedSessionId(String(targetSessId));
+        fetchUserSessions(true);
+      }
+    };
+    window.addEventListener('student_focus_session', handleFocus);
+    return () => window.removeEventListener('student_focus_session', handleFocus);
+  }, []);
+
+  // Auto-scroll to highlighted session card
+  useEffect(() => {
+    if (!highlightedSessionId || sessions.length === 0) return;
+
+    const targetId = String(highlightedSessionId);
+    setTimeout(() => {
+      const el = document.getElementById(`student_session_${targetId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 300);
+
+    const timer = setTimeout(() => {
+      setHighlightedSessionId(null);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [highlightedSessionId, sessions]);
+
   // Dynamically resolve teacher's configured subject from MongoDB for the session
   const getTeacherSubjectForSession = (sessionItem, index) => {
     if (!sessionItem) return '';
@@ -309,11 +359,15 @@ export default function DashboardPage() {
 
     const teacherSubject = selectedTeacher.subject || selectedTeacher.matiere || selectedSubject || 'Français & Arabe';
 
+    const effectivePhone = (user?.phone || user?.studentPhone || localStorage.getItem('last_student_phone') || '').trim();
+
     const sessionPayload = {
       studentName: user?.childName || user?.parentName || (user?.email ? user.email.split('@')[0] : 'Élève'),
       parentName: user?.parentName || (user?.email ? user.email.split('@')[0] : 'Parent'),
       childName: user?.childName || '',
       studentEmail: user?.email || '',
+      studentPhone: effectivePhone,
+      phone: effectivePhone,
       studentId: user?.id || user?._id || '',
       teacherId: String(selectedTeacher.teacherId || selectedTeacher.id || ''),
       teacherName: selectedTeacher.name || 'Maîtresse',
@@ -360,6 +414,10 @@ export default function DashboardPage() {
 
       // Dispatch Real-time Notification
       const studentDisplayName = user?.childName || user?.parentName || (user?.email ? user.email.split('@')[0] : 'Élève');
+      const phoneSuffixFr = effectivePhone ? ` (Tél: ${effectivePhone})` : '';
+      const phoneSuffixAr = effectivePhone ? ` (الهاتف: ${effectivePhone})` : '';
+      const phoneSuffixEn = effectivePhone ? ` (Phone: ${effectivePhone})` : '';
+
       createNotification({
         type: 'NEW_SESSION_REQUEST',
         targetRoles: ['admin', 'maitresse'],
@@ -374,13 +432,19 @@ export default function DashboardPage() {
           en: `📩 New course booking (${sessionPayload.day})`,
         },
         desc: {
-          fr: `${studentDisplayName} a demandé une séance avec ${selectedTeacher.name} le ${sessionPayload.day} à ${sessionPayload.time}.`,
-          ar: `طلب التلميذ ${studentDisplayName} حصة مع المعلمة ${selectedTeacher.name} يوم ${sessionPayload.day} الساعة ${sessionPayload.time}.`,
-          en: `${studentDisplayName} booked a session with ${selectedTeacher.name} on ${sessionPayload.day} at ${sessionPayload.time}.`,
+          fr: `${studentDisplayName}${phoneSuffixFr} a demandé une séance avec ${selectedTeacher.name} le ${sessionPayload.day} à ${sessionPayload.time}. 📱 Tél: ${effectivePhone}`,
+          ar: `طلب التلميذ ${studentDisplayName}${phoneSuffixAr} حصة مع المعلمة ${selectedTeacher.name} يوم ${sessionPayload.day} الساعة ${sessionPayload.time}. 📱 الهاتف: ${effectivePhone}`,
+          en: `${studentDisplayName}${phoneSuffixEn} booked a session with ${selectedTeacher.name} on ${sessionPayload.day} at ${sessionPayload.time}. 📱 Phone: ${effectivePhone}`,
         },
         icon: 'calendar_month',
         iconBg: 'bg-purple-100 text-purple-700',
         link: '/admin',
+        meta: {
+          sessionId: newEntry?.id || newEntry?._id,
+          studentName: studentDisplayName,
+          teacherName: selectedTeacher.name,
+          studentPhone: effectivePhone,
+        },
       });
 
       setBookingSuccess(true);
@@ -402,32 +466,63 @@ export default function DashboardPage() {
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
-    }, 5000);
+    }, 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // Helper to check whether the session date & time has arrived
+  // Helper to check whether the session date & time has arrived (EXACTLY at or after start time, not before)
   const isSessionActive = (session) => {
     if (!session || !session.meetUrl) return false;
 
     const now = currentTime;
-    const currentDayIdx = now.getDay(); // 0: Sun, 1: Mon, 2: Tue, 3: Wed, 4: Thu, 5: Fri, 6: Sat
+    const nowTime = now.getTime();
+
+    // 1. Check if session has a specific date YYYY-MM-DD or DD/MM/YYYY
+    const dayStr = String(session.day || session.datetime || '').trim();
+    const timeStr = String(session.time || session.datetime || '').trim();
+
+    const isoDateMatch = dayStr.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+    const frDateMatch = dayStr.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+    const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})/);
+
+    let sessionDate = null;
+
+    if (isoDateMatch && timeMatch) {
+      const year = parseInt(isoDateMatch[1], 10);
+      const month = parseInt(isoDateMatch[2], 10) - 1;
+      const date = parseInt(isoDateMatch[3], 10);
+      const hours = parseInt(timeMatch[1], 10);
+      const minutes = parseInt(timeMatch[2], 10);
+      sessionDate = new Date(year, month, date, hours, minutes, 0, 0);
+    } else if (frDateMatch && timeMatch) {
+      const date = parseInt(frDateMatch[1], 10);
+      const month = parseInt(frDateMatch[2], 10) - 1;
+      const year = parseInt(frDateMatch[3], 10);
+      const hours = parseInt(timeMatch[1], 10);
+      const minutes = parseInt(timeMatch[2], 10);
+      sessionDate = new Date(year, month, date, hours, minutes, 0, 0);
+    }
+
+    if (sessionDate) {
+      const sessionStart = sessionDate.getTime();
+      const sessionEnd = sessionStart + 90 * 60 * 1000; // Active for 90 minutes from exact start time
+      // EXACTLY when time arrives: nowTime >= sessionStart
+      return nowTime >= sessionStart && nowTime <= sessionEnd;
+    }
+
+    // 2. Fallback: Day of week comparison (e.g. "Lundi", "Mardi", "الإثنين")
+    const currentDayIdx = now.getDay();
     const currentHour = now.getHours();
     const currentMin = now.getMinutes();
-    const currentTotalMin = currentHour * 60 + currentMin;
+    const currentSec = now.getSeconds();
+    const currentTotalSec = currentHour * 3600 + currentMin * 60 + currentSec;
 
-    // Parse time: "14:00", "16:30", "10:00"
-    const timeStr = String(session.time || session.datetime || '').trim();
-    const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})/);
-    let sessionTotalMin = null;
+    let sessionTotalSec = null;
     if (timeMatch) {
       const h = parseInt(timeMatch[1], 10);
       const m = parseInt(timeMatch[2], 10);
-      sessionTotalMin = h * 60 + m;
+      sessionTotalSec = h * 3600 + m * 60;
     }
-
-    // Parse day
-    const dayStr = String(session.day || session.datetime || '').toLowerCase().trim();
 
     const dayMap = {
       'dimanche': 0, 'الأحد': 0, 'الاحد': 0, 'sunday': 0,
@@ -440,35 +535,25 @@ export default function DashboardPage() {
     };
 
     let isToday = false;
+    const lowerDay = dayStr.toLowerCase();
 
-    if (dayStr.includes("aujourd'hui") || dayStr.includes("اليوم") || dayStr.includes("today")) {
+    if (lowerDay.includes("aujourd'hui") || lowerDay.includes("اليوم") || lowerDay.includes("today")) {
       isToday = true;
     } else {
       for (const [name, idx] of Object.entries(dayMap)) {
-        if (dayStr.includes(name)) {
+        if (lowerDay.includes(name)) {
           if (currentDayIdx === idx) {
             isToday = true;
           }
           break;
         }
       }
-
-      // If day is date string e.g. "2026-08-14" or "14/08/2026"
-      const dateMatch = dayStr.match(/(\d{4}-\d{2}-\d{2})|(\d{1,2}[\/\-]\d{1,2})/);
-      if (dateMatch) {
-        const todayIso = now.toISOString().split('T')[0];
-        if (dayStr.includes(todayIso)) {
-          isToday = true;
-        }
-      }
     }
 
     if (isToday) {
-      if (sessionTotalMin !== null) {
-        // Active from 10 minutes before start time until 90 minutes after start time
-        const startThreshold = sessionTotalMin - 10;
-        const endThreshold = sessionTotalMin + 90;
-        return currentTotalMin >= startThreshold && currentTotalMin <= endThreshold;
+      if (sessionTotalSec !== null) {
+        // Active EXACTLY at start time (>= sessionTotalSec) until 90 mins after (sessionTotalSec + 5400s)
+        return currentTotalSec >= sessionTotalSec && currentTotalSec <= sessionTotalSec + 5400;
       }
       return true;
     }
@@ -647,12 +732,31 @@ export default function DashboardPage() {
                   .filter(s => s.status !== 'completed' && s.status !== 'done')
                   .map((sessionItem, index) => {
                   const isActive = isSessionActive(sessionItem);
+                  const sessionIdStr = String(sessionItem._id || sessionItem.id || index);
+                  const isHighlighted = highlightedSessionId && (
+                    sessionIdStr === String(highlightedSessionId) ||
+                    String(sessionItem._id) === String(highlightedSessionId) ||
+                    String(sessionItem.id) === String(highlightedSessionId)
+                  );
 
                   return (
                     <div
+                      id={`student_session_${sessionIdStr}`}
                       key={sessionItem._id || sessionItem.id || index}
-                      className="bg-[#faf9f5] rounded-3xl p-5 sm:p-6 border-2 border-slate-200/80 hover:border-[#8c90f6]/60 shadow-sm transition-all flex flex-col gap-4"
+                      className={`rounded-3xl p-5 sm:p-6 border transition-all duration-300 flex flex-col gap-4 ${
+                        isHighlighted
+                          ? 'bg-gradient-to-br from-[#e8f5e9] via-[#f0fdf4] to-[#f5f3ff] border-emerald-500 ring-1 ring-emerald-400 shadow-md'
+                          : 'bg-[#faf9f5] border-slate-200/80 hover:border-[#8c90f6]/60 shadow-sm'
+                      }`}
                     >
+                      {/* Highlight Notification Badge */}
+                      {isHighlighted && (
+                        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-600 text-white text-xs font-black w-fit animate-pulse shadow-md border-2 border-white">
+                          <span className="material-symbols-outlined text-base">videocam</span>
+                          <span>{lang === 'ar' ? 'تمت إضافة رابط الحصة حديثاً ! جاهز للدخول 🟢' : 'Lien Google Meet prêt pour cette séance ! 🟢'}</span>
+                        </div>
+                      )}
+
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <div className="flex flex-col gap-1.5">
                           {/* Session Number & Status Badges */}

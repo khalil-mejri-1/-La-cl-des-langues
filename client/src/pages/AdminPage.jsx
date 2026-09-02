@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import MeetModal from '../components/MeetModal';
@@ -13,11 +14,14 @@ const playNotificationChime = () => {};
 export default function AdminPage() {
   const { t, lang, isRtl } = useLanguage();
   const { user, loginUser, updateCurrentUser } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('session'); // 'session' | 'client' | 'calendar'
   const [searchQuery, setSearchQuery] = useState('');
   const [editingSession, setEditingSession] = useState(null);
   const [sessionToDelete, setSessionToDelete] = useState(null);
   const [selectedStudentForAvatar, setSelectedStudentForAvatar] = useState(null);
+  const [highlightedSessionId, setHighlightedSessionId] = useState(null);
+  const [highlightedGroupId, setHighlightedGroupId] = useState(null);
 
   // Calendar Lock & Month state for Teacher
   const initialLoadDoneRef = useRef(false);
@@ -56,6 +60,44 @@ export default function AdminPage() {
     return roleStr.includes('maitresse') || roleStr.includes('teacher') || roleStr.includes('maître');
   })();
 
+  // Real clients from MongoDB + fallback mocks
+  const [clientsList, setClientsList] = useState([]);
+  const [loadingClients, setLoadingClients] = useState(false);
+
+  // Confirmation & Edit Modals State
+  const [editAccountModal, setEditAccountModal] = useState(null); // { client, role, status }
+  const [deleteModalData, setDeleteModalData] = useState(null); // client
+  const [actionLoading, setActionLoading] = useState(false);
+
+  // Dynamic Sessions from MongoDB & Cache
+  const [adminSessions, setAdminSessions] = useState([]);
+  const [loadingSessions, setLoadingSessions] = useState(false);
+
+  const fetchSessions = async (isPolling = false) => {
+    if (!isPolling) setLoadingSessions(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/sessions`);
+      const data = await res.json();
+      if (res.ok && data.sessions && Array.isArray(data.sessions)) {
+        setAdminSessions(data.sessions);
+      } else {
+        const cached = JSON.parse(localStorage.getItem('admin_sessions_cache') || '[]');
+        if (cached.length > 0) {
+          setAdminSessions(cached);
+        }
+      }
+    } catch (err) {
+      if (!isPolling) console.log('Erreur chargement sessions:', err);
+      const cached = JSON.parse(localStorage.getItem('admin_sessions_cache') || '[]');
+      if (cached.length > 0) {
+        setAdminSessions(cached);
+      }
+    } finally {
+      if (!isPolling) setLoadingSessions(false);
+      initialLoadDoneRef.current = true;
+    }
+  };
+
   // If user is only Maitresse, restrict tab to 'session' and lock 'client'
   useEffect(() => {
     if (isOnlyMaitresse && activeTab === 'client') {
@@ -63,15 +105,47 @@ export default function AdminPage() {
     }
   }, [isOnlyMaitresse, activeTab]);
 
-  // Listen for notification click → switch to session tab
+  // Read target tab and session from sessionStorage if present
+  useEffect(() => {
+    try {
+      const storedTab = sessionStorage.getItem('admin_target_tab');
+      if (storedTab && ['session', 'client', 'calendar'].includes(storedTab)) {
+        setActiveTab(storedTab);
+        sessionStorage.removeItem('admin_target_tab');
+      }
+      const storedSessId = sessionStorage.getItem('admin_target_session_id');
+      if (storedSessId) {
+        setHighlightedSessionId(storedSessId);
+        sessionStorage.removeItem('admin_target_session_id');
+      }
+    } catch {}
+  }, []);
+
+  // Read tab and session params from URL (e.g. /admin?tab=session&sessionId=123)
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ['session', 'client', 'calendar'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+    const sessIdParam = searchParams.get('sessionId');
+    if (sessIdParam) {
+      setHighlightedSessionId(sessIdParam);
+    }
+  }, [searchParams]);
+
+  // Listen for notification click → switch to session tab & refresh
   useEffect(() => {
     const handleSwitchTab = (e) => {
-      const tab = e.detail?.tab;
-      if (tab) {
-        setActiveTab(tab);
-        // Scroll to top of page so the section is visible
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+      const tab = e.detail?.tab || 'session';
+      setActiveTab(tab);
+      fetchSessions(true);
+
+      const targetSessId = e.detail?.sessionId || e.detail?.notif?.meta?.sessionId;
+      if (targetSessId) {
+        setHighlightedSessionId(String(targetSessId));
       }
+      // Scroll to top of session list
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     };
     window.addEventListener('admin_switch_tab', handleSwitchTab);
     return () => window.removeEventListener('admin_switch_tab', handleSwitchTab);
@@ -260,19 +334,6 @@ export default function AdminPage() {
     setSessionPage(1);
   }, [searchQuery, activeTab]);
 
-  // Real clients from MongoDB + fallback mocks
-  const [clientsList, setClientsList] = useState([]);
-  const [loadingClients, setLoadingClients] = useState(false);
-
-  // Confirmation & Edit Modals State
-  const [editAccountModal, setEditAccountModal] = useState(null); // { client, role, status }
-  const [deleteModalData, setDeleteModalData] = useState(null); // client
-  const [actionLoading, setActionLoading] = useState(false);
-
-  // Dynamic Sessions from MongoDB & Cache
-  const [adminSessions, setAdminSessions] = useState([]);
-  const [loadingSessions, setLoadingSessions] = useState(false);
-
   // Check if a session belongs to / is relevant to current user
   const isSessionRelevant = (session) => {
     if (!session) return false;
@@ -297,31 +358,6 @@ export default function AdminPage() {
       return false;
     }
     return false;
-  };
-
-  const fetchSessions = async (isPolling = false) => {
-    if (!isPolling) setLoadingSessions(true);
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/sessions`);
-      const data = await res.json();
-      if (res.ok && data.sessions && Array.isArray(data.sessions)) {
-        setAdminSessions(data.sessions);
-      } else {
-        const cached = JSON.parse(localStorage.getItem('admin_sessions_cache') || '[]');
-        if (cached.length > 0) {
-          setAdminSessions(cached);
-        }
-      }
-    } catch (err) {
-      if (!isPolling) console.log('Erreur chargement sessions:', err);
-      const cached = JSON.parse(localStorage.getItem('admin_sessions_cache') || '[]');
-      if (cached.length > 0) {
-        setAdminSessions(cached);
-      }
-    } finally {
-      if (!isPolling) setLoadingSessions(false);
-      initialLoadDoneRef.current = true;
-    }
   };
 
   // Multi-channel real-time listener + polling heartbeat
@@ -454,7 +490,7 @@ export default function AdminPage() {
     return String(roleData).toLowerCase().split(',').map(r => r.trim()).filter(Boolean);
   };
 
-  // Open Edit Account (Role, Status & Teacher Subject) Modal
+  // Open Edit Account (Role, Status, Teacher Subject & Phone) Modal
   const openEditAccountModal = (client) => {
     const rolesArray = parseRoles(client.role);
     setEditAccountModal({
@@ -462,6 +498,7 @@ export default function AdminPage() {
       roles: rolesArray.length > 0 ? rolesArray : ['user'],
       status: client.status || 'Actif',
       subject: client.subject || 'Français & Arabe',
+      phone: client.phone || client.studentPhone || '',
     });
   };
 
@@ -481,11 +518,11 @@ export default function AdminPage() {
     });
   };
 
-  // Confirm Account Role & Status Update
+  // Confirm Account Role, Status & Phone Update
   const confirmAccountUpdate = async () => {
     if (!editAccountModal) return;
     setActionLoading(true);
-    const { client, roles: targetRoles, status: targetStatus, subject: targetSubject } = editAccountModal;
+    const { client, roles: targetRoles, status: targetStatus, subject: targetSubject, phone: targetPhone } = editAccountModal;
     const targetRoleString = (targetRoles || ['user']).join(', ');
 
     try {
@@ -497,10 +534,11 @@ export default function AdminPage() {
             role: targetRoleString,
             status: targetStatus,
             subject: targetSubject || 'Français & Arabe',
+            phone: targetPhone || '',
           }),
         });
         if (res.ok) {
-          setClientsList(prev => prev.map(c => c._id === client._id ? { ...c, role: targetRoleString, status: targetStatus, subject: targetSubject } : c));
+          setClientsList(prev => prev.map(c => c._id === client._id ? { ...c, role: targetRoleString, status: targetStatus, subject: targetSubject, phone: targetPhone } : c));
           
           const isCurrentLoggedInUser = user && (
             String(user.id || user._id) === String(client._id) ||
@@ -508,13 +546,13 @@ export default function AdminPage() {
           );
 
           if (isCurrentLoggedInUser) {
-            updateCurrentUser({ role: targetRoleString, status: targetStatus, subject: targetSubject });
-            loginUser({ ...user, role: targetRoleString, status: targetStatus, subject: targetSubject });
+            updateCurrentUser({ role: targetRoleString, status: targetStatus, subject: targetSubject, phone: targetPhone });
+            loginUser({ ...user, role: targetRoleString, status: targetStatus, subject: targetSubject, phone: targetPhone });
           }
 
           // Real-time instant notification event
           window.dispatchEvent(new CustomEvent('auth_role_updated', {
-            detail: { clientId: client._id, role: targetRoleString, status: targetStatus, subject: targetSubject }
+            detail: { clientId: client._id, role: targetRoleString, status: targetStatus, subject: targetSubject, phone: targetPhone }
           }));
 
           fetchSessions(true);
@@ -522,10 +560,10 @@ export default function AdminPage() {
         }
       } else {
         // Mock update
-        setClientsList(prev => prev.map(c => c === client ? { ...c, role: targetRoleString, status: targetStatus, subject: targetSubject } : c));
+        setClientsList(prev => prev.map(c => c === client ? { ...c, role: targetRoleString, status: targetStatus, subject: targetSubject, phone: targetPhone } : c));
         if (user && user.email === client.email) {
-          updateCurrentUser({ role: targetRoleString, status: targetStatus, subject: targetSubject });
-          loginUser({ ...user, role: targetRoleString, status: targetStatus, subject: targetSubject });
+          updateCurrentUser({ role: targetRoleString, status: targetStatus, subject: targetSubject, phone: targetPhone });
+          loginUser({ ...user, role: targetRoleString, status: targetStatus, subject: targetSubject, phone: targetPhone });
         }
       }
     } catch (err) {
@@ -720,6 +758,8 @@ export default function AdminPage() {
 
   // Instant update session status (e.g. Complété, Pending, Meet Added)
   const handleUpdateSessionStatus = async (sessionId, newStatus) => {
+    const targetSession = adminSessions.find(s => String(s._id || s.id) === String(sessionId));
+
     // Optimistic update
     setAdminSessions(prev =>
       prev.map(s => (String(s._id || s.id) === String(sessionId) ? { ...s, status: newStatus } : s))
@@ -746,6 +786,38 @@ export default function AdminPage() {
     window.dispatchEvent(new CustomEvent('session_updated', {
       detail: { sessionId, status: newStatus }
     }));
+
+    // Send real-time notification to student if marked as completed
+    if (newStatus === 'completed' || newStatus === 'done') {
+      const studentDisplayName = targetSession?.studentName || targetSession?.childName || targetSession?.parentName || 'Élève';
+      const teacherDisplayName = targetSession?.teacherName || user?.parentName || user?.name || 'Maîtresse';
+      const timeInfo = targetSession?.day ? `${targetSession.day} à ${targetSession.time || '14:00'}` : (targetSession?.datetime || 'votre séance');
+
+      createNotification({
+        type: 'SESSION_COMPLETED',
+        targetStudentId: String(targetSession?.studentId || ''),
+        targetStudentEmail: (targetSession?.studentEmail || '').toLowerCase().trim(),
+        targetTeacherName: teacherDisplayName,
+        title: {
+          fr: `🎉 Séance Complétée !`,
+          ar: `🎉 اكتملت الحصة بنجاح !`,
+          en: `🎉 Session Completed!`,
+        },
+        desc: {
+          fr: `La maîtresse ${teacherDisplayName} a validé votre séance du ${timeInfo} comme complétée. Consultez votre suivi dans l'Espace Parent.`,
+          ar: `أكدت المعلمة ${teacherDisplayName} اكتمال حصتكم ليوم ${timeInfo} بنجاح. تفقد تقرير المتابعة في مساحة الولي.`,
+          en: `Teacher ${teacherDisplayName} marked your session on ${timeInfo} as completed. Check progress in Parent Space.`,
+        },
+        icon: 'verified',
+        iconBg: 'bg-emerald-100 text-emerald-700',
+        link: '/parent',
+        meta: {
+          sessionId: String(sessionId),
+          studentName: studentDisplayName,
+          teacherName: teacherDisplayName,
+        },
+      });
+    }
 
     try {
       if (typeof BroadcastChannel !== 'undefined') {
@@ -880,6 +952,7 @@ export default function AdminPage() {
       });
 
       const studentName = session.studentName || session.name || session.childName || session.parentName || 'Élève';
+      const studentPhone = session.studentPhone || session.phone || matchingSessions.find(ms => ms.studentPhone || ms.phone)?.studentPhone || matchingSessions.find(ms => ms.studentPhone || ms.phone)?.phone || '';
 
       groups.push({
         groupId: sPackId ? `group_${sPackId}` : `group_${sId}`,
@@ -888,6 +961,7 @@ export default function AdminPage() {
         parentName: session.parentName || '',
         childAge: session.childAge || '',
         studentEmail: session.studentEmail || '',
+        studentPhone,
         teacherName: session.teacherName || 'Maîtresse',
         paymentMethod: session.paymentMethod || 'fawran',
         createdAt: session.createdAt || session.timestamp,
@@ -914,6 +988,38 @@ export default function AdminPage() {
   const sessionStartIndex = totalGroups === 0 ? 0 : (sessionPage - 1) * GROUPS_PER_PAGE + 1;
   const sessionEndIndex = Math.min(sessionPage * GROUPS_PER_PAGE, totalGroups);
   const displayedGroups = sessionGroups.slice((sessionPage - 1) * GROUPS_PER_PAGE, sessionPage * GROUPS_PER_PAGE);
+
+  // Auto-scroll and highlight target session group when clicked from notification
+  useEffect(() => {
+    if (!highlightedSessionId || sessionGroups.length === 0) return;
+
+    const groupIdx = sessionGroups.findIndex(g =>
+      g.sessions.some(s => String(s._id || s.id) === String(highlightedSessionId)) ||
+      String(g.groupId).includes(highlightedSessionId)
+    );
+
+    if (groupIdx !== -1) {
+      const targetPage = Math.floor(groupIdx / GROUPS_PER_PAGE) + 1;
+      if (sessionPage !== targetPage) {
+        setSessionPage(targetPage);
+      }
+      const matchedGroup = sessionGroups[groupIdx];
+      setHighlightedGroupId(matchedGroup.groupId);
+
+      setTimeout(() => {
+        const el = document.getElementById(`session_group_${matchedGroup.groupId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 300);
+
+      const timer = setTimeout(() => {
+        setHighlightedGroupId(null);
+        setHighlightedSessionId(null);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightedSessionId, sessionGroups]);
 
   const filteredClients = clientsList.filter(c =>
     (c.parentName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -1276,18 +1382,28 @@ export default function AdminPage() {
                     const totalCount = group.sessions.length;
                     const isAllMeetAdded = addedCount === totalCount;
                     const initial = (group.studentName[0] || 'E').toUpperCase();
+                    const isHighlighted = highlightedGroupId === group.groupId || (
+                      highlightedSessionId && group.sessions.some(s => String(s._id || s.id) === String(highlightedSessionId))
+                    );
 
                     return (
                       <div
+                        id={`session_group_${group.groupId}`}
                         key={group.groupId}
-                        className={`bg-white rounded-3xl border-2 transition-all duration-300 overflow-hidden shadow-sm hover:shadow-xl ${
-                          isFourPack
-                            ? 'border-[#4221b6]/30 hover:border-[#4221b6]'
-                            : 'border-slate-200 hover:border-[#4221b6]/60'
+                        className={`bg-white rounded-3xl border transition-all duration-300 overflow-hidden ${
+                          isHighlighted
+                            ? 'border-emerald-500 ring-1 ring-emerald-500 shadow-md'
+                            : isFourPack
+                              ? 'border-[#4221b6]/30 hover:border-[#4221b6] shadow-sm hover:shadow-xl'
+                              : 'border-slate-200 hover:border-[#4221b6]/60 shadow-sm hover:shadow-xl'
                         }`}
                       >
                         {/* ── Frame Header: Student Info & Pack Meta ────────── */}
-                        <div className="p-4 sm:p-5 bg-gradient-to-r from-[#f5f3ff] via-[#faf8ff] to-[#f0fdf4] border-b-2 border-[#e0d7ff]/80 flex flex-wrap items-center justify-between gap-3.5">
+                        <div className={`p-4 sm:p-5 border-b-2 flex flex-wrap items-center justify-between gap-3.5 ${
+                          isHighlighted
+                            ? 'bg-gradient-to-r from-[#e0d7ff] via-[#f5f3ff] to-[#dcfce7] border-[#8c90f6]'
+                            : 'bg-gradient-to-r from-[#f5f3ff] via-[#faf8ff] to-[#f0fdf4] border-[#e0d7ff]/80'
+                        }`}>
                           <div className="flex items-center gap-3.5 min-w-0">
                             <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#4221b6] via-[#5d35e0] to-[#8c90f6] text-white flex items-center justify-center font-black text-lg shadow-md shrink-0">
                               {initial}
@@ -1305,19 +1421,63 @@ export default function AdminPage() {
                                       : `${group.sessions.length} ${lang === 'ar' ? 'حصص' : 'Séances'}`}
                                   </span>
                                 </span>
+                                {isHighlighted && (
+                                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1 animate-pulse">
+                                    <span>🔔</span>
+                                    <span>{lang === 'ar' ? 'طلب محدد من الإشعار' : 'Séance sélectionnée'}</span>
+                                  </span>
+                                )}
                               </div>
-                              <p className="text-xs text-slate-500 font-semibold mt-1 flex items-center gap-2 flex-wrap">
+                              <div className="text-xs text-slate-500 font-semibold mt-1.5 flex items-center gap-2 flex-wrap">
                                 {group.parentName && (
-                                  <span className="bg-white/80 px-2 py-0.5 rounded-md border border-slate-200">
+                                  <span className="bg-white/90 px-2 py-0.5 rounded-md border border-slate-200">
                                     {lang === 'ar' ? `الولي: ${group.parentName}` : `Parent : ${group.parentName}`}
                                   </span>
                                 )}
                                 {group.studentEmail && (
-                                  <span className="text-slate-400 truncate">
+                                  <span className="text-slate-400 truncate text-[11px]">
                                     📧 {group.studentEmail}
                                   </span>
                                 )}
-                              </p>
+                                {group.studentPhone ? (
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-mono font-bold bg-emerald-50 text-emerald-900 border border-emerald-300 shadow-xs" dir="ltr">
+                                      <span className="material-symbols-outlined text-xs text-emerald-600">phone_iphone</span>
+                                      <span>{group.studentPhone}</span>
+                                    </span>
+                                    {/* Quick WhatsApp Action */}
+                                    <a
+                                      href={`https://wa.me/${group.studentPhone.replace(/\D/g, '')}?text=${encodeURIComponent(
+                                        lang === 'ar'
+                                          ? `مرحباً ${group.studentName}، بخصوص حجزك في منصة المفتاح للغات...`
+                                          : `Bonjour ${group.studentName}, concernant votre réservation sur la plateforme...`
+                                      )}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-black bg-[#25D366] hover:bg-[#1EBE5D] text-white shadow-xs transition hover:scale-105"
+                                      title={lang === 'ar' ? 'مراسلة عبر الواتساب' : 'Contacter sur WhatsApp'}
+                                    >
+                                      <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24">
+                                        <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2zm.01 1.67c2.2 0 4.26.86 5.82 2.42a8.225 8.225 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.196 8.196 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24zm4.52 11.66c-.25-.12-1.47-.72-1.7-.81-.23-.08-.39-.12-.56.12-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.12-1.05-.39-2-1.23-.74-.66-1.24-1.47-1.39-1.72-.14-.25-.02-.38.11-.51.11-.11.25-.29.37-.43.12-.15.17-.25.25-.42.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.49-.4-.42-.56-.43h-.47c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.12.17 1.77 2.71 4.29 3.8 2.52 1.08 2.52.72 2.97.68.46-.05 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.06-.11-.23-.17-.48-.3z" />
+                                      </svg>
+                                      <span>WhatsApp</span>
+                                    </a>
+                                    {/* Quick Call Action */}
+                                    <a
+                                      href={`tel:${group.studentPhone}`}
+                                      className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-lg text-[10px] font-black bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition hover:scale-105"
+                                      title={lang === 'ar' ? 'اتصال هاتفي' : 'Appel direct'}
+                                    >
+                                      <span className="material-symbols-outlined text-[11px]">call</span>
+                                      <span>{lang === 'ar' ? 'اتصال' : 'Appeler'}</span>
+                                    </a>
+                                  </div>
+                                ) : (
+                                  <span className="text-[10px] text-slate-400 italic">
+                                    {lang === 'ar' ? '📱 لا يوجد رقم مسجل' : '📱 Aucun tél.'}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
 
@@ -1558,6 +1718,7 @@ export default function AdminPage() {
                         <th class="p-4 border-b border-surface-variant">Parent</th>
                         <th class="p-4 border-b border-surface-variant">Enfant</th>
                         <th class="p-4 border-b border-surface-variant">E-mail</th>
+                        <th class="p-4 border-b border-surface-variant">{lang === 'ar' ? 'الهاتف' : 'Téléphone'}</th>
                         <th class="p-4 border-b border-surface-variant">Rôle</th>
                         <th class="p-4 border-b border-surface-variant text-right">Actions</th>
                       </tr>
@@ -1588,6 +1749,28 @@ export default function AdminPage() {
                             </td>
                             <td class="p-4 text-on-surface text-sm font-semibold">{client.childName || 'Non spécifié'}</td>
                             <td class="p-4 text-on-surface-variant text-sm font-medium">{client.email}</td>
+                            <td class="p-4 text-sm font-semibold">
+                              {client.phone ? (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-mono text-xs text-slate-800 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200" dir="ltr">
+                                    {client.phone}
+                                  </span>
+                                  <a
+                                    href={`https://wa.me/${client.phone.replace(/\D/g, '')}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-6 h-6 rounded-md bg-[#25D366] hover:bg-[#1EBE5D] text-white flex items-center justify-center shadow-xs transition hover:scale-105"
+                                    title="WhatsApp"
+                                  >
+                                    <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24">
+                                      <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2zm.01 1.67c2.2 0 4.26.86 5.82 2.42a8.225 8.225 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.196 8.196 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24zm4.52 11.66c-.25-.12-1.47-.72-1.7-.81-.23-.08-.39-.12-.56.12-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.12-1.05-.39-2-1.23-.74-.66-1.24-1.47-1.39-1.72-.14-.25-.02-.38.11-.51.11-.11.25-.29.37-.43.12-.15.17-.25.25-.42.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.49-.4-.42-.56-.43h-.47c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.12.17 1.77 2.71 4.29 3.8 2.52 1.08 2.52.72 2.97.68.46-.05 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.06-.11-.23-.17-.48-.3z" />
+                                    </svg>
+                                  </a>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-slate-400 italic">{lang === 'ar' ? 'غير مسجل' : 'Non renseigné'}</span>
+                              )}
+                            </td>
                             <td className="p-4">
                               {/* Clickable Multi-Role Badges Container */}
                               <div
@@ -1860,6 +2043,25 @@ export default function AdminPage() {
                 </div>
               </div>
             )}
+
+            {/* Client Phone Number Input */}
+            <div className="space-y-1.5 pt-1">
+              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-base text-emerald-600">phone_iphone</span>
+                <span>{lang === 'ar' ? 'رقم الهاتف للتواصل وتأكيد الحصص :' : 'Numéro de téléphone / WhatsApp :'}</span>
+              </label>
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-base">call</span>
+                <input
+                  type="tel"
+                  value={editAccountModal.phone || ''}
+                  onChange={(e) => setEditAccountModal(prev => ({ ...prev, phone: e.target.value }))}
+                  placeholder={lang === 'ar' ? 'مثال: 33069770 أو +974...' : 'Ex: +974... ou 06...'}
+                  className="w-full h-11 pl-9 pr-3 text-xs font-mono font-bold rounded-xl border border-slate-300 bg-white text-slate-800 focus:border-[#4221b6] focus:outline-none focus:ring-2 focus:ring-[#8c90f6]/30"
+                  dir="ltr"
+                />
+              </div>
+            </div>
 
             {/* Select Status */}
             <div className="space-y-2 pt-1">

@@ -18,6 +18,7 @@ export default function Navbar() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const notifContainerRef = useRef(null);
+  const popoverRef = useRef(null);
   const userMenuRef = useRef(null);
   const [readIds, setReadIds] = useState(() => {
     try { return JSON.parse(localStorage.getItem('notif_read_ids') || '[]'); } catch { return []; }
@@ -74,6 +75,24 @@ export default function Navbar() {
   // ── Derived values from notifications ─────────────────────────────────────
   const unreadCount = notifications.filter(n => !readIds.includes(n.id)).length;
 
+  // One-time total wipe of legacy notifications for all accounts
+  useEffect(() => {
+    try {
+      const isWiped = localStorage.getItem('notif_all_accounts_cleared_v2');
+      if (!isWiped) {
+        const now = Date.now();
+        localStorage.setItem('notif_cleared_timestamp', String(now));
+        localStorage.setItem('app_unified_notifications', '[]');
+        localStorage.setItem('student_notifications', '[]');
+        localStorage.setItem('notif_read_ids', '[]');
+        localStorage.setItem('notif_deleted_ids', '[]');
+        localStorage.setItem('notif_all_accounts_cleared_v2', 'true');
+        setNotifications([]);
+        setReadIds([]);
+      }
+    } catch {}
+  }, []);
+
   // Load notifications from localStorage + DB + listen for new ones in real time
   const loadNotifications = useCallback(async (shouldPlaySound = false) => {
     if (!user) {
@@ -82,6 +101,9 @@ export default function Navbar() {
     }
 
     try {
+      const clearedTimestamp = parseInt(localStorage.getItem('notif_cleared_timestamp') || '0', 10);
+      const deletedIds = JSON.parse(localStorage.getItem('notif_deleted_ids') || '[]');
+
       const unified = JSON.parse(localStorage.getItem('app_unified_notifications') || '[]');
       const studentOld = JSON.parse(localStorage.getItem('student_notifications') || '[]');
       const sessionsCache = JSON.parse(localStorage.getItem('admin_sessions_cache') || '[]');
@@ -150,12 +172,21 @@ export default function Navbar() {
         }
       });
 
-      // Filter and sort for the logged in user
-      const userNotifs = filterNotificationsForUser(combined, user).sort((a, b) => {
-        const timeA = new Date(a.timestamp || 0).getTime();
-        const timeB = new Date(b.timestamp || 0).getTime();
-        return timeB - timeA;
-      });
+      // Filter and sort for the logged in user, excluding deleted/cleared notifications
+      const userNotifs = filterNotificationsForUser(combined, user)
+        .filter(n => {
+          if (deletedIds.includes(n.id)) return false;
+          if (clearedTimestamp > 0) {
+            const notifTime = new Date(n.timestamp || 0).getTime();
+            if (notifTime > 0 && notifTime <= clearedTimestamp) return false;
+          }
+          return true;
+        })
+        .sort((a, b) => {
+          const timeA = new Date(a.timestamp || 0).getTime();
+          const timeB = new Date(b.timestamp || 0).getTime();
+          return timeB - timeA;
+        });
 
       setNotifications(userNotifs);
 
@@ -176,7 +207,11 @@ export default function Navbar() {
       if (typeof BroadcastChannel !== 'undefined') {
         bc = new BroadcastChannel('app_sessions_channel');
         bc.onmessage = (e) => {
-          if (
+          if (e.data?.type === 'ALL_NOTIFICATIONS_CLEARED') {
+            setNotifications([]);
+            setReadIds([]);
+            loadNotifications(false);
+          } else if (
             e.data?.type === 'NOTIFICATION_CREATED' ||
             e.data?.type === 'NEW_SESSION_BOOKED' ||
             e.data?.type === 'MEET_LINK_ADDED' ||
@@ -192,11 +227,22 @@ export default function Navbar() {
     const handleAppNotification = () => {
       loadNotifications(false);
     };
+    const handleAppCleared = () => {
+      setNotifications([]);
+      setReadIds([]);
+      loadNotifications(false);
+    };
     window.addEventListener('app_notification', handleAppNotification);
+    window.addEventListener('app_notifications_cleared', handleAppCleared);
 
     // Storage event listener (cross-tab instant fallback)
     const handleStorage = (e) => {
-      if (e.key === 'app_unified_notifications' || e.key === 'student_notifications') {
+      if (
+        e.key === 'app_unified_notifications' ||
+        e.key === 'student_notifications' ||
+        e.key === 'notif_cleared_timestamp' ||
+        e.key === 'notif_deleted_ids'
+      ) {
         loadNotifications(false);
       }
     };
@@ -210,20 +256,15 @@ export default function Navbar() {
     return () => {
       if (bc) bc.close();
       window.removeEventListener('app_notification', handleAppNotification);
+      window.removeEventListener('app_notifications_cleared', handleAppCleared);
       window.removeEventListener('storage', handleStorage);
       clearInterval(liveInterval);
     };
   }, [loadNotifications]);
 
-  // Click-outside and Escape listener to close notifications window from anywhere
+  // Escape listener to close notifications window
   useEffect(() => {
     if (!isNotificationsOpen) return;
-
-    const handleOutsideClick = (e) => {
-      if (notifContainerRef.current && !notifContainerRef.current.contains(e.target)) {
-        setIsNotificationsOpen(false);
-      }
-    };
 
     const handleEscape = (e) => {
       if (e.key === 'Escape') {
@@ -231,15 +272,8 @@ export default function Navbar() {
       }
     };
 
-    document.addEventListener('mousedown', handleOutsideClick);
-    document.addEventListener('touchstart', handleOutsideClick);
     document.addEventListener('keydown', handleEscape);
-
-    return () => {
-      document.removeEventListener('mousedown', handleOutsideClick);
-      document.removeEventListener('touchstart', handleOutsideClick);
-      document.removeEventListener('keydown', handleEscape);
-    };
+    return () => document.removeEventListener('keydown', handleEscape);
   }, [isNotificationsOpen]);
 
   // Click outside listener for User Menu Dropdown
@@ -271,7 +305,51 @@ export default function Navbar() {
     try { localStorage.setItem('notif_read_ids', JSON.stringify(allIds)); } catch {}
   };
 
+  const clearAllNotifications = () => {
+    const now = Date.now();
+    try {
+      localStorage.setItem('notif_cleared_timestamp', String(now));
+      localStorage.setItem('app_unified_notifications', '[]');
+      localStorage.setItem('student_notifications', '[]');
+      localStorage.setItem('notif_read_ids', '[]');
+      const currentIds = notifications.map(n => n.id);
+      const existingDeleted = JSON.parse(localStorage.getItem('notif_deleted_ids') || '[]');
+      const updatedDeleted = Array.from(new Set([...existingDeleted, ...currentIds]));
+      localStorage.setItem('notif_deleted_ids', JSON.stringify(updatedDeleted));
+    } catch {}
+
+    setNotifications([]);
+    setReadIds([]);
+
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        const bc = new BroadcastChannel('app_sessions_channel');
+        bc.postMessage({ type: 'ALL_NOTIFICATIONS_CLEARED', timestamp: now });
+        bc.close();
+      }
+    } catch {}
+
+    window.dispatchEvent(new CustomEvent('app_notifications_cleared', { detail: { timestamp: now } }));
+  };
+
+  const deleteNotification = (e, notifId) => {
+    e.stopPropagation();
+    try {
+      const existingDeleted = JSON.parse(localStorage.getItem('notif_deleted_ids') || '[]');
+      const updatedDeleted = Array.from(new Set([...existingDeleted, notifId]));
+      localStorage.setItem('notif_deleted_ids', JSON.stringify(updatedDeleted));
+
+      const unified = JSON.parse(localStorage.getItem('app_unified_notifications') || '[]');
+      localStorage.setItem('app_unified_notifications', JSON.stringify(unified.filter(n => n.id !== notifId)));
+    } catch {}
+
+    setNotifications(prev => prev.filter(n => n.id !== notifId));
+    setReadIds(prev => prev.filter(id => id !== notifId));
+  };
+
   const handleNotificationClick = (notif) => {
+    if (!notif) return;
+
     if (!readIds.includes(notif.id)) {
       const updated = [...readIds, notif.id];
       setReadIds(updated);
@@ -280,26 +358,113 @@ export default function Navbar() {
 
     setIsNotificationsOpen(false);
 
-    // If already on /admin page, switch to 'session' tab via custom event
-    if (window.location.pathname === '/admin') {
-      window.dispatchEvent(new CustomEvent('admin_switch_tab', { detail: { tab: 'session' } }));
-    } else if (notif.link) {
-      // If link points to /admin, navigate there and request session tab
-      if (notif.link.startsWith('/admin')) {
-        navigate('/admin');
-        // Small delay to let AdminPage mount before dispatching
-        setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('admin_switch_tab', { detail: { tab: 'session' } }));
-        }, 150);
+    const sessionId = notif.meta?.sessionId || '';
+    const studentName = notif.meta?.studentName || '';
+
+    // 1. Student notification: MEET_LINK_ADDED or link to dashboard
+    if (notif.type === 'MEET_LINK_ADDED' || notif.link === '/dashboard' || (notif.link && notif.link.startsWith('/dashboard'))) {
+      try {
+        if (sessionId) sessionStorage.setItem('student_target_session_id', String(sessionId));
+      } catch {}
+
+      const targetUrl = `/dashboard${sessionId ? `?sessionId=${sessionId}` : ''}`;
+
+      window.dispatchEvent(new CustomEvent('student_focus_session', {
+        detail: { sessionId, notif }
+      }));
+
+      if (window.location.pathname === '/dashboard') {
+        navigate(targetUrl, { replace: true });
       } else {
-        navigate(notif.link);
+        navigate(targetUrl);
       }
-    } else {
-      // Default: go to admin session tab
-      navigate('/admin');
+
       setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('admin_switch_tab', { detail: { tab: 'session' } }));
-      }, 150);
+        window.dispatchEvent(new CustomEvent('student_focus_session', {
+          detail: { sessionId, notif }
+        }));
+      }, 100);
+
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('student_focus_session', {
+          detail: { sessionId, notif }
+        }));
+      }, 300);
+      return;
+    }
+
+    // 2. Student notification: SESSION_COMPLETED or link to /parent
+    if (notif.type === 'SESSION_COMPLETED' || notif.link === '/parent' || (notif.link && notif.link.startsWith('/parent'))) {
+      try {
+        if (sessionId) sessionStorage.setItem('parent_target_session_id', String(sessionId));
+      } catch {}
+
+      const targetUrl = `/parent${sessionId ? `?sessionId=${sessionId}` : ''}`;
+
+      window.dispatchEvent(new CustomEvent('parent_focus_session', {
+        detail: { sessionId, notif }
+      }));
+
+      if (window.location.pathname === '/parent') {
+        navigate(targetUrl, { replace: true });
+      } else {
+        navigate(targetUrl);
+      }
+
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('parent_focus_session', {
+          detail: { sessionId, notif }
+        }));
+      }, 100);
+
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('parent_focus_session', {
+          detail: { sessionId, notif }
+        }));
+      }, 300);
+      return;
+    }
+
+    // 3. Admin / Teacher notification: NEW_SESSION_REQUEST or link to /admin
+    if (notif.type === 'NEW_SESSION_REQUEST' || notif.link === '/admin' || (notif.link && notif.link.startsWith('/admin')) || !!sessionId) {
+      try {
+        sessionStorage.setItem('admin_target_tab', 'session');
+        if (sessionId) sessionStorage.setItem('admin_target_session_id', String(sessionId));
+      } catch {}
+
+      const targetQuery = `tab=session${sessionId ? `&sessionId=${sessionId}` : ''}${studentName ? `&student=${encodeURIComponent(studentName)}` : ''}`;
+      const targetUrl = `/admin?${targetQuery}`;
+
+      // Dispatch custom event immediately for same-window active page
+      window.dispatchEvent(new CustomEvent('admin_switch_tab', {
+        detail: { tab: 'session', sessionId, studentName, notif }
+      }));
+
+      if (window.location.pathname === '/admin') {
+        navigate(targetUrl, { replace: true });
+      } else {
+        navigate(targetUrl);
+      }
+
+      // Backup delayed dispatches to ensure AdminPage catches it
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('admin_switch_tab', {
+          detail: { tab: 'session', sessionId, studentName, notif }
+        }));
+      }, 100);
+
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('admin_switch_tab', {
+          detail: { tab: 'session', sessionId, studentName, notif }
+        }));
+      }, 300);
+      return;
+    }
+
+    if (notif.link) {
+      navigate(notif.link);
+    } else {
+      navigate('/dashboard');
     }
   };
 
@@ -454,7 +619,10 @@ export default function Navbar() {
                   ></div>
 
                   {/* Popover Card */}
-                  <div className={`pointer-events-auto w-full max-w-md sm:w-96 bg-white rounded-3xl shadow-2xl border-2 border-[#8c90f6]/40 z-[10000] overflow-hidden transform transition-all duration-200 mt-20 sm:mt-0 sm:fixed sm:top-[86px] ${isRtl ? 'sm:left-6 md:left-12' : 'sm:right-6 md:right-12'} flex flex-col max-h-[calc(100vh-100px)] animate-in zoom-in-95`}>
+                  <div
+                    ref={popoverRef}
+                    className={`pointer-events-auto w-full max-w-md sm:w-96 bg-white rounded-3xl shadow-2xl border-2 border-[#8c90f6]/40 z-[10000] overflow-hidden transform transition-all duration-200 mt-20 sm:mt-0 sm:fixed sm:top-[86px] ${isRtl ? 'sm:left-6 md:left-12' : 'sm:right-6 md:right-12'} flex flex-col max-h-[calc(100vh-100px)] animate-in zoom-in-95`}
+                  >
                     <div className="p-3.5 sm:p-4 px-4 sm:px-5 bg-gradient-to-r from-[#f5f3ff] to-white border-b border-slate-100 flex justify-between items-center shrink-0">
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-xl bg-[#4221b6] text-white flex items-center justify-center text-sm shadow-xs">
@@ -470,13 +638,25 @@ export default function Navbar() {
                         )}
                       </div>
                       {notifications.length > 0 && (
-                        <button
-                          onClick={markAllRead}
-                          className="text-xs font-extrabold text-[#4221b6] hover:text-[#351996] hover:underline cursor-pointer flex items-center gap-1"
-                        >
-                          <span className="material-symbols-outlined text-sm">done_all</span>
-                          <span>{lang === 'ar' ? 'تحديد الكل كمقروء' : 'Tout marquer lu'}</span>
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={markAllRead}
+                            title={lang === 'ar' ? 'تحديد الكل كمقروء' : 'Tout marquer lu'}
+                            className="text-[11px] sm:text-xs font-extrabold text-[#4221b6] hover:text-[#351996] hover:underline cursor-pointer flex items-center gap-1"
+                          >
+                            <span className="material-symbols-outlined text-sm">done_all</span>
+                            <span>{lang === 'ar' ? 'مقروء' : 'Lu'}</span>
+                          </button>
+                          <span className="text-slate-300">|</span>
+                          <button
+                            onClick={clearAllNotifications}
+                            title={lang === 'ar' ? 'حذف جميع الإشعارات تماماً' : 'Supprimer toutes les notifications'}
+                            className="text-[11px] sm:text-xs font-extrabold text-red-600 hover:text-red-700 hover:underline cursor-pointer flex items-center gap-1"
+                          >
+                            <span className="material-symbols-outlined text-sm">delete_sweep</span>
+                            <span>{lang === 'ar' ? 'حذف الكل' : 'Effacer'}</span>
+                          </button>
+                        </div>
                       )}
                     </div>
 
@@ -508,14 +688,14 @@ export default function Navbar() {
                             <div
                               key={notif.id}
                               onClick={() => handleNotificationClick(notif)}
-                              className={`p-3.5 sm:p-4 flex gap-3 hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100 last:border-b-0 ${isUnread ? 'bg-[#f7f5ff]' : ''}`}
+                              className={`p-3.5 sm:p-4 flex gap-3 hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100 last:border-b-0 group relative ${isUnread ? 'bg-[#f7f5ff]' : ''}`}
                             >
                               <div className={`w-10 h-10 rounded-2xl ${iconBg} flex items-center justify-center shrink-0 mt-0.5 shadow-xs`}>
                                 <span className="material-symbols-outlined text-lg sm:text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>
                                   {iconName}
                                 </span>
                               </div>
-                              <div className="flex-grow space-y-1 min-w-0">
+                              <div className="flex-grow space-y-1 min-w-0 pr-6 rtl:pr-0 rtl:pl-6">
                                 <div className="flex justify-between items-start gap-2">
                                   <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 leading-snug flex items-center gap-1.5 min-w-0 flex-1">
                                     <span className="break-words">{cleanTitle(titleText)}</span>
@@ -531,13 +711,32 @@ export default function Navbar() {
                                   {descText}
                                 </p>
                               </div>
+
+                              {/* Individual Notification Delete Button */}
+                              <button
+                                onClick={(e) => deleteNotification(e, notif.id)}
+                                title={lang === 'ar' ? 'حذف هذا الإشعار' : 'Supprimer cette notification'}
+                                className="absolute top-3 right-3 rtl:right-auto rtl:left-3 opacity-0 group-hover:opacity-100 w-6 h-6 rounded-full bg-slate-200 hover:bg-red-500 hover:text-white text-slate-600 flex items-center justify-center text-xs transition-all cursor-pointer shadow-xs"
+                              >
+                                <span className="material-symbols-outlined text-xs">close</span>
+                              </button>
                             </div>
                           );
                         })
                       )}
                     </div>
 
-                    <div className="p-3 bg-slate-50 border-t border-slate-100 flex items-center justify-center shrink-0">
+                    <div className="p-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between px-4 shrink-0">
+                      {notifications.length > 0 ? (
+                        <button
+                          onClick={clearAllNotifications}
+                          className="text-xs font-extrabold text-red-600 hover:text-red-700 hover:underline cursor-pointer flex items-center gap-1"
+                        >
+                          <span className="material-symbols-outlined text-sm">delete_sweep</span>
+                          <span>{lang === 'ar' ? 'مسح جميع الإشعارات' : 'Vider les notifications'}</span>
+                        </button>
+                      ) : <div></div>}
+
                       <button
                         onClick={() => setIsNotificationsOpen(false)}
                         className="text-xs font-black text-slate-600 hover:text-[#4221b6] transition-colors cursor-pointer inline-flex items-center gap-1 px-4 py-1.5 rounded-full hover:bg-slate-200"
@@ -640,15 +839,21 @@ export default function Navbar() {
 
                   {/* Navigation Links inside Dropdown */}
                   <div className="mt-3 pt-2.5 border-t border-slate-100 flex flex-col gap-1">
-                    {isAdmin && (
+                    {(isAdmin || isMaitresse) && (
                       <Link
-                        to="/admin"
+                        to="/admin?tab=session"
                         onClick={() => setIsUserMenuOpen(false)}
                         className="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-slate-700 hover:text-[#4221b6] hover:bg-violet-50/80 transition-all group"
                       >
                         <span className="flex items-center gap-2.5">
-                          <span className="material-symbols-outlined text-lg text-[#4221b6] group-hover:scale-110 transition-transform">admin_panel_settings</span>
-                          <span>{lang === 'ar' ? 'لوحة التحكم والإدارة' : 'Espace Administration'}</span>
+                          <span className="material-symbols-outlined text-lg text-[#4221b6] group-hover:scale-110 transition-transform">
+                            {isAdmin ? 'admin_panel_settings' : 'school'}
+                          </span>
+                          <span>
+                            {isAdmin
+                              ? (lang === 'ar' ? 'لوحة التحكم والإدارة' : 'Espace Administration')
+                              : (lang === 'ar' ? 'مساحة المعلمة وإدارة الحصص' : 'Espace Maîtresse & Sessions')}
+                          </span>
                         </span>
                         <span className="material-symbols-outlined text-xs rtl:rotate-180 text-slate-400 group-hover:text-[#4221b6]">arrow_forward</span>
                       </Link>

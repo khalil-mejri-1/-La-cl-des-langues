@@ -27,6 +27,11 @@ const sessionSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    studentPhone: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     studentId: {
       type: String,
       default: '',

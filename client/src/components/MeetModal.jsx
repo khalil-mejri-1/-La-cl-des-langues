@@ -12,7 +12,12 @@ export default function MeetModal({ session, onClose, onSave }) {
     onSave(session._id || session.id, meetInput, statusInput);
   };
 
-  if (!session) return null;
+  const isTrialSession = Boolean(
+    session?.isTrial === true ||
+    session?.isTrial === 'true' ||
+    session?.paymentMethod === 'free_trial' ||
+    /essai|تجريب|gratuit|مجاني/i.test(session?.subject || '')
+  );
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
@@ -31,6 +36,24 @@ export default function MeetModal({ session, onClose, onSave }) {
             <span className="material-symbols-outlined text-lg">close</span>
           </button>
         </div>
+
+        {/* Free Trial vs Paid Badge Notice */}
+        {isTrialSession ? (
+          <div className="p-3 rounded-2xl bg-amber-50 border-2 border-amber-300 flex items-center justify-between gap-2 text-xs font-black text-amber-950">
+            <div className="flex items-center gap-1.5">
+              <span className="text-base">🎁</span>
+              <span>{lang === 'ar' ? 'حصة تجريبية مجانية (غير مدفوعة)' : 'Séance d\'essai GRATUITE (Non payante)'}</span>
+            </div>
+            <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-black uppercase">
+              {lang === 'ar' ? 'مجانية 100%' : '100% Gratuite'}
+            </span>
+          </div>
+        ) : (
+          <div className="p-2.5 rounded-2xl bg-indigo-50 border border-indigo-200 flex items-center gap-2 text-xs font-bold text-indigo-900">
+            <span className="material-symbols-outlined text-base text-indigo-600">payments</span>
+            <span>{lang === 'ar' ? 'حصة ضمن باقة مدفوعة' : 'Séance d\'un pack payant'}</span>
+          </div>
+        )}
 
         <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
           <p className="text-xs text-slate-500 font-semibold mb-1">

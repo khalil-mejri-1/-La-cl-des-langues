@@ -86,22 +86,45 @@ export default function DashboardPage() {
           const parentName = (user?.parentName || '').toLowerCase().trim();
           const childName = (user?.childName || '').toLowerCase().trim();
 
+          // Get guest identification from localStorage
+          let localPhone = '';
+          let myBookedIds = [];
+          try {
+            localPhone = localStorage.getItem('last_student_phone') || '';
+            myBookedIds = JSON.parse(localStorage.getItem('my_booked_session_ids') || '[]');
+          } catch {}
+
+          const normalizePhone = (phone) => {
+            if (!phone) return '';
+            const digits = String(phone).replace(/\D/g, '');
+            return digits.length >= 8 ? digits.slice(-8) : digits;
+          };
+
+          const userPhoneClean = normalizePhone(user?.phone || user?.studentPhone || localPhone);
+
           const myFiltered = data.sessions.filter((s) => {
             const sEmail = (s.studentEmail || '').toLowerCase().trim();
             const sId = String(s.studentId || '').trim();
             const sParent = (s.parentName || '').toLowerCase().trim();
             const sChild = (s.childName || s.studentName || s.name || '').toLowerCase().trim();
+            const sDocId = String(s._id || s.id || '');
+            const sPhoneClean = normalizePhone(s.studentPhone || s.phone || '');
 
             if (userId && sId && userId === sId) return true;
             if (userEmail && sEmail && userEmail === sEmail) return true;
             if (parentName && sParent && (parentName.includes(sParent) || sParent.includes(parentName))) return true;
             if (childName && sChild && (childName.includes(sChild) || sChild.includes(childName))) return true;
-            
+            // Phone matching for guests who booked a trial session
+            if (userPhoneClean && sPhoneClean && userPhoneClean === sPhoneClean) return true;
+            // Session ID matching for guests (stored at booking time)
+            if (sDocId && myBookedIds.includes(sDocId)) return true;
+
             // If logged in as admin or general user without specific name match, return true only if admin
             if (isAdmin) return true;
 
             return false;
           });
+
 
           // Sort by session pack number (extracted from subject like "Séance 2/4" → 2), then by createdAt
           const getSessionPackNum = (s) => {

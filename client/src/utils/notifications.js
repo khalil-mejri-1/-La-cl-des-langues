@@ -4,6 +4,16 @@ export const playNotificationSound = () => {};
 /**
  * Creates and broadcasts a real-time notification across tabs and components
  */
+// Helper to normalize phone numbers for comparison (removes country codes, non-digits, keeps last 8 digits)
+export const normalizePhone = (phone) => {
+  if (!phone) return '';
+  const digits = String(phone).replace(/\D/g, '');
+  return digits.length >= 8 ? digits.slice(-8) : digits;
+};
+
+/**
+ * Creates and broadcasts a real-time notification across tabs and components
+ */
 export const createNotification = (notif) => {
   try {
     const id = notif.id || `notif_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
@@ -19,6 +29,8 @@ export const createNotification = (notif) => {
       targetTeacherName: notif.targetTeacherName || '',
       targetStudentId: notif.targetStudentId ? String(notif.targetStudentId) : '',
       targetStudentEmail: (notif.targetStudentEmail || '').toLowerCase().trim(),
+      targetStudentPhone: (notif.targetStudentPhone || notif.meta?.studentPhone || '').trim(),
+      targetStudentName: notif.targetStudentName || notif.meta?.studentName || '',
       title: notif.title || { fr: 'Notification', ar: 'إشعار', en: 'Notification' },
       desc: notif.desc || { fr: '', ar: '', en: '' },
       icon: notif.icon || 'notifications',
@@ -58,15 +70,25 @@ export const createNotification = (notif) => {
  * Synthesizes database sessions into structured notifications for teachers, admins, and students
  */
 export const syncSessionsToNotifications = (sessions = [], user = null) => {
-  if (!user || !Array.isArray(sessions) || sessions.length === 0) return [];
+  if (!Array.isArray(sessions) || sessions.length === 0) return [];
 
-  const userId = String(user.id || user._id || '').trim();
-  const userEmail = (user.email || '').toLowerCase().trim();
-  const userName = (user.parentName || user.name || userEmail.split('@')[0] || '').toLowerCase().trim();
+  const userId = String(user?.id || user?._id || '').trim();
+  const userEmail = (user?.email || '').toLowerCase().trim();
+  const userName = (user?.parentName || user?.childName || user?.name || userEmail.split('@')[0] || '').toLowerCase().trim();
 
-  const roleVal = user.role || user.roles || '';
+  // Retrieve user phone and local booked sessions on this browser
+  let localPhone = '';
+  let myBookedIds = [];
+  try {
+    localPhone = localStorage.getItem('last_student_phone') || '';
+    myBookedIds = JSON.parse(localStorage.getItem('my_booked_session_ids') || '[]');
+  } catch {}
+
+  const userPhoneClean = normalizePhone(user?.phone || user?.studentPhone || localPhone);
+
+  const roleVal = user?.role || user?.roles || '';
   const roleStr = Array.isArray(roleVal) ? roleVal.join(' ').toLowerCase() : String(roleVal).toLowerCase();
-  const isAdmin = user.isAdmin === true || roleStr.includes('admin');
+  const isAdmin = user?.isAdmin === true || roleStr.includes('admin');
   const isMaitresse = roleStr.includes('maitresse') || roleStr.includes('teacher') || roleStr.includes('maître');
 
   const synthesized = [];
@@ -79,6 +101,7 @@ export const syncSessionsToNotifications = (sessions = [], user = null) => {
     const sStudentId = String(s.studentId || '').trim();
     const sStudentEmail = (s.studentEmail || '').toLowerCase().trim();
     const studentPhone = (s.studentPhone || s.phone || '').trim();
+    const sessionPhoneClean = normalizePhone(studentPhone);
     const studentDisplayName = s.studentName || s.childName || s.parentName || 'Élève';
     const teacherDisplayName = s.teacherName || 'Maîtresse';
     const timeInfo = s.day ? `${s.day} à ${s.time || '14:00'}` : (s.datetime || 'Date prévue');
@@ -93,9 +116,13 @@ export const syncSessionsToNotifications = (sessions = [], user = null) => {
       (sTeacherName && userName && (sTeacherName.includes(userName) || userName.includes(sTeacherName)))
     );
 
-    const isMyStudentSession = (
+    // Multi-factor identification for student: ID, Email, Phone, Booked Session ID, or Name
+    const isMyStudentSession = Boolean(
       (sStudentId && userId && sStudentId === userId) ||
-      (sStudentEmail && userEmail && sStudentEmail === userEmail)
+      (sStudentEmail && userEmail && sStudentEmail === userEmail) ||
+      (sessionPhoneClean && userPhoneClean && sessionPhoneClean === userPhoneClean) ||
+      (myBookedIds.includes(sId)) ||
+      (userName && s.studentName && (s.studentName.toLowerCase().trim() === userName || userName.includes(s.studentName.toLowerCase().trim())))
     );
 
     // 1. If teacher or admin -> course request notification
@@ -109,6 +136,8 @@ export const syncSessionsToNotifications = (sessions = [], user = null) => {
         targetTeacherName: teacherDisplayName,
         targetStudentId: sStudentId,
         targetStudentEmail: sStudentEmail,
+        targetStudentPhone: studentPhone,
+        targetStudentName: studentDisplayName,
         title: {
           fr: `📩 Demande de cours`,
           ar: `📩 طلب حجز حصة`,
@@ -139,6 +168,8 @@ export const syncSessionsToNotifications = (sessions = [], user = null) => {
         type: 'MEET_LINK_ADDED',
         targetStudentId: sStudentId,
         targetStudentEmail: sStudentEmail,
+        targetStudentPhone: studentPhone,
+        targetStudentName: studentDisplayName,
         targetTeacherName: teacherDisplayName,
         title: {
           fr: `🔗 Lien Google Meet prêt !`,
@@ -147,7 +178,7 @@ export const syncSessionsToNotifications = (sessions = [], user = null) => {
         },
         desc: {
           fr: `La maîtresse ${teacherDisplayName} a ajouté le lien pour votre séance du ${timeInfo}.`,
-          ar: `أضافت المعلمة ${teacherDisplayName} رابط حصتك ليوم ${timeInfo}.`,
+          ar: `أضافت المعلمة ${teacherDisplayName} رابط حصتك ليوم ${timeInfo}. اضغط للدخول المباشر.`,
           en: `${teacherDisplayName} added the link for your session on ${timeInfo}.`,
         },
         icon: 'videocam',
@@ -157,6 +188,8 @@ export const syncSessionsToNotifications = (sessions = [], user = null) => {
         meta: {
           sessionId: sId,
           meetUrl: s.meetUrl,
+          studentPhone: studentPhone,
+          studentName: studentDisplayName,
         },
       });
     }
@@ -168,6 +201,8 @@ export const syncSessionsToNotifications = (sessions = [], user = null) => {
         type: 'SESSION_COMPLETED',
         targetStudentId: sStudentId,
         targetStudentEmail: sStudentEmail,
+        targetStudentPhone: studentPhone,
+        targetStudentName: studentDisplayName,
         targetTeacherName: teacherDisplayName,
         title: {
           fr: `🎉 Séance Complétée !`,
@@ -199,16 +234,25 @@ export const syncSessionsToNotifications = (sessions = [], user = null) => {
  * Filters all notifications to only those relevant to the currently logged in user
  */
 export const filterNotificationsForUser = (allNotifs = [], user = null) => {
-  if (!user || !Array.isArray(allNotifs)) return [];
+  if (!Array.isArray(allNotifs)) return [];
 
-  const userId = String(user.id || user._id || '').trim();
-  const userEmail = (user.email || '').toLowerCase().trim();
-  const userName = (user.parentName || user.name || userEmail.split('@')[0] || '').toLowerCase().trim();
+  const userId = String(user?.id || user?._id || '').trim();
+  const userEmail = (user?.email || '').toLowerCase().trim();
+  const userName = (user?.parentName || user?.childName || user?.name || userEmail.split('@')[0] || '').toLowerCase().trim();
+
+  let localPhone = '';
+  let myBookedIds = [];
+  try {
+    localPhone = localStorage.getItem('last_student_phone') || '';
+    myBookedIds = JSON.parse(localStorage.getItem('my_booked_session_ids') || '[]');
+  } catch {}
+
+  const userPhoneClean = normalizePhone(user?.phone || user?.studentPhone || localPhone);
 
   // Role detection
-  const roleVal = user.role || user.roles || '';
+  const roleVal = user?.role || user?.roles || '';
   const roleStr = Array.isArray(roleVal) ? roleVal.join(' ').toLowerCase() : String(roleVal).toLowerCase();
-  const isAdmin = user.isAdmin === true || roleStr.includes('admin');
+  const isAdmin = user?.isAdmin === true || roleStr.includes('admin');
   const isMaitresse = roleStr.includes('maitresse') || roleStr.includes('teacher') || roleStr.includes('maître');
 
   return allNotifs.filter(n => {
@@ -235,9 +279,19 @@ export const filterNotificationsForUser = (allNotifs = [], user = null) => {
     if (n.type === 'MEET_LINK_ADDED' || n.type === 'SESSION_COMPLETED') {
       const targetSId = String(n.targetStudentId || '').trim();
       const targetSEmail = (n.targetStudentEmail || '').toLowerCase().trim();
+      const targetPhoneClean = normalizePhone(n.targetStudentPhone || n.meta?.studentPhone);
+      const notifSessionId = String(n.meta?.sessionId || n.sessionId || '');
 
       if (targetSId && userId && targetSId === userId) return true;
       if (targetSEmail && userEmail && targetSEmail === userEmail) return true;
+      if (targetPhoneClean && userPhoneClean && targetPhoneClean === userPhoneClean) return true;
+      if (notifSessionId && myBookedIds.includes(notifSessionId)) return true;
+      if (n.targetStudentName && userName && (n.targetStudentName.toLowerCase().trim() === userName || userName.includes(n.targetStudentName.toLowerCase().trim()))) return true;
+      
+      // Guest or student account matched by local booked phone / session ID
+      if ((!user || user?.isGuest || roleStr === 'user') && (myBookedIds.includes(notifSessionId) || (targetPhoneClean && userPhoneClean && targetPhoneClean === userPhoneClean))) {
+        return true;
+      }
       return false;
     }
 

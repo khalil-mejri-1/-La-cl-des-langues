@@ -704,11 +704,15 @@ export default function AdminPage() {
     if (session) {
       const teacherDisplayName = user?.parentName || user?.email?.split('@')[0] || session.teacherName || 'La maîtresse';
       const studentDisplayName = session.studentName || session.childName || session.parentName || 'Élève';
+      const studentPhone = (session.studentPhone || session.phone || '').trim();
+      const sessionIdStr = String(session._id || session.id);
 
       createNotification({
         type: 'MEET_LINK_ADDED',
         targetStudentId: String(session.studentId || ''),
         targetStudentEmail: session.studentEmail || '',
+        targetStudentPhone: studentPhone,
+        targetStudentName: studentDisplayName,
         targetTeacherName: teacherDisplayName,
         title: {
           fr: `🔗 Lien Google Meet ajouté !`,
@@ -724,10 +728,12 @@ export default function AdminPage() {
         iconBg: 'bg-emerald-100 text-emerald-700',
         link: '/dashboard',
         meta: {
-          sessionId: String(session._id || session.id),
+          sessionId: sessionIdStr,
           meetUrl: targetUrl,
           day: session.day,
           time: session.time,
+          studentPhone: studentPhone,
+          studentName: studentDisplayName,
         },
       });
 
@@ -735,9 +741,10 @@ export default function AdminPage() {
       try {
         const notifPayload = {
           type: 'MEET_LINK_ADDED',
-          sessionId: String(session._id || session.id),
+          sessionId: sessionIdStr,
           studentId: session.studentId || '',
           studentEmail: session.studentEmail || '',
+          studentPhone: studentPhone,
           teacherName: teacherDisplayName,
           studentName: studentDisplayName,
           day: session.day || '',
@@ -749,6 +756,23 @@ export default function AdminPage() {
         const existing = JSON.parse(localStorage.getItem('student_notifications') || '[]');
         existing.unshift({ ...notifPayload, id: Date.now() });
         localStorage.setItem('student_notifications', JSON.stringify(existing.slice(0, 50)));
+
+        // Also push to app_unified_notifications keyed by sessionId so phone-matched guests see it
+        const unified = JSON.parse(localStorage.getItem('app_unified_notifications') || '[]');
+        const notifId = `meet_link_${sessionIdStr}`;
+        if (!unified.some(n => n.id === notifId)) {
+          unified.unshift({
+            ...notifPayload,
+            id: notifId,
+            targetStudentPhone: studentPhone,
+            targetStudentName: studentDisplayName,
+            iconBg: 'bg-emerald-100 text-emerald-700',
+            icon: 'videocam',
+            link: '/dashboard',
+            meta: { sessionId: sessionIdStr, meetUrl: targetUrl, studentPhone, studentName: studentDisplayName },
+          });
+          localStorage.setItem('app_unified_notifications', JSON.stringify(unified.slice(0, 80)));
+        }
       } catch {}
     }
     // ────────────────────────────────────────────────────────────────────────
@@ -792,11 +816,15 @@ export default function AdminPage() {
       const studentDisplayName = targetSession?.studentName || targetSession?.childName || targetSession?.parentName || 'Élève';
       const teacherDisplayName = targetSession?.teacherName || user?.parentName || user?.name || 'Maîtresse';
       const timeInfo = targetSession?.day ? `${targetSession.day} à ${targetSession.time || '14:00'}` : (targetSession?.datetime || 'votre séance');
+      const studentPhone = (targetSession?.studentPhone || targetSession?.phone || '').trim();
+      const sessionIdStr = String(sessionId);
 
       createNotification({
         type: 'SESSION_COMPLETED',
         targetStudentId: String(targetSession?.studentId || ''),
         targetStudentEmail: (targetSession?.studentEmail || '').toLowerCase().trim(),
+        targetStudentPhone: studentPhone,
+        targetStudentName: studentDisplayName,
         targetTeacherName: teacherDisplayName,
         title: {
           fr: `🎉 Séance Complétée !`,
@@ -812,9 +840,10 @@ export default function AdminPage() {
         iconBg: 'bg-emerald-100 text-emerald-700',
         link: '/parent',
         meta: {
-          sessionId: String(sessionId),
+          sessionId: sessionIdStr,
           studentName: studentDisplayName,
           teacherName: teacherDisplayName,
+          studentPhone: studentPhone,
         },
       });
     }
@@ -863,6 +892,16 @@ export default function AdminPage() {
     return true;
   });
 
+  // Helper to reliably detect free trial sessions
+  const isSessionTrial = (s) => {
+    if (!s) return false;
+    if (s.isTrial === true || s.isTrial === 'true') return true;
+    if (s.paymentMethod === 'free_trial') return true;
+    const subj = String(s.subject || '').toLowerCase();
+    if (subj.includes('essai') || subj.includes('تجريب') || subj.includes('gratuit') || subj.includes('مجاني')) return true;
+    return false;
+  };
+
   // Group sessions strictly by booking pack / batch request
   const groupSessions = (list) => {
     const groups = [];
@@ -890,6 +929,7 @@ export default function AdminPage() {
       const sTeacherKey = (session.teacherId || session.teacherName || '').toLowerCase().trim();
       const sBaseSubj = getBaseSubject(session.subject);
       const sCreated = new Date(session.createdAt || session.timestamp || 0).getTime();
+      const sIsTrial = isSessionTrial(session);
 
       const matchingSessions = [session];
       processedIds.add(sId);
@@ -903,6 +943,10 @@ export default function AdminPage() {
 
         const otherId = String(other._id || other.id || otherIdx);
         if (processedIds.has(otherId)) return;
+
+        // Never mix free trial sessions with paid sessions
+        const otherIsTrial = isSessionTrial(other);
+        if (sIsTrial !== otherIsTrial) return;
 
         const otherPackId = String(other.packId || '').trim();
         const otherStudentKey = (other.studentId || other.studentEmail || other.studentName || other.childName || other.parentName || '').toLowerCase().trim();
@@ -953,6 +997,7 @@ export default function AdminPage() {
 
       const studentName = session.studentName || session.name || session.childName || session.parentName || 'Élève';
       const studentPhone = session.studentPhone || session.phone || matchingSessions.find(ms => ms.studentPhone || ms.phone)?.studentPhone || matchingSessions.find(ms => ms.studentPhone || ms.phone)?.phone || '';
+      const isTrialGroup = matchingSessions.some(isSessionTrial);
 
       groups.push({
         groupId: sPackId ? `group_${sPackId}` : `group_${sId}`,
@@ -963,8 +1008,9 @@ export default function AdminPage() {
         studentEmail: session.studentEmail || '',
         studentPhone,
         teacherName: session.teacherName || 'Maîtresse',
-        paymentMethod: session.paymentMethod || 'fawran',
+        paymentMethod: isTrialGroup ? 'free_trial' : (session.paymentMethod || 'fawran'),
         createdAt: session.createdAt || session.timestamp,
+        isTrial: isTrialGroup,
         sessions: matchingSessions,
       });
     });
@@ -1377,7 +1423,8 @@ export default function AdminPage() {
               ) : displayedGroups.length > 0 ? (
                 <div className="p-4 md:p-6 space-y-6">
                   {displayedGroups.map((group) => {
-                    const isFourPack = group.sessions.length === 4;
+                    const isTrialGroup = Boolean(group.isTrial || group.sessions.some(isSessionTrial));
+                    const isFourPack = !isTrialGroup && group.sessions.length === 4;
                     const addedCount = group.sessions.filter(s => s.meetUrl || s.status === 'meet_added').length;
                     const totalCount = group.sessions.length;
                     const isAllMeetAdded = addedCount === totalCount;
@@ -1390,37 +1437,66 @@ export default function AdminPage() {
                       <div
                         id={`session_group_${group.groupId}`}
                         key={group.groupId}
-                        className={`bg-white rounded-3xl border transition-all duration-300 overflow-hidden ${
+                        className={`bg-white rounded-3xl border-2 transition-all duration-300 overflow-hidden ${
                           isHighlighted
-                            ? 'border-emerald-500 ring-1 ring-emerald-500 shadow-md'
-                            : isFourPack
-                              ? 'border-[#4221b6]/30 hover:border-[#4221b6] shadow-sm hover:shadow-xl'
-                              : 'border-slate-200 hover:border-[#4221b6]/60 shadow-sm hover:shadow-xl'
+                            ? 'border-emerald-500 ring-2 ring-emerald-400 shadow-xl'
+                            : isTrialGroup
+                              ? 'border-amber-400/90 shadow-md hover:shadow-xl bg-gradient-to-b from-amber-50/15 to-white'
+                              : isFourPack
+                                ? 'border-[#4221b6]/30 hover:border-[#4221b6] shadow-sm hover:shadow-xl'
+                                : 'border-slate-200 hover:border-[#4221b6]/60 shadow-sm hover:shadow-xl'
                         }`}
                       >
                         {/* ── Frame Header: Student Info & Pack Meta ────────── */}
                         <div className={`p-4 sm:p-5 border-b-2 flex flex-wrap items-center justify-between gap-3.5 ${
                           isHighlighted
                             ? 'bg-gradient-to-r from-[#e0d7ff] via-[#f5f3ff] to-[#dcfce7] border-[#8c90f6]'
-                            : 'bg-gradient-to-r from-[#f5f3ff] via-[#faf8ff] to-[#f0fdf4] border-[#e0d7ff]/80'
+                            : isTrialGroup
+                              ? 'bg-gradient-to-r from-amber-50 via-orange-50/30 to-emerald-50 border-amber-300/80'
+                              : 'bg-gradient-to-r from-[#f5f3ff] via-[#faf8ff] to-[#f0fdf4] border-[#e0d7ff]/80'
                         }`}>
                           <div className="flex items-center gap-3.5 min-w-0">
-                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#4221b6] via-[#5d35e0] to-[#8c90f6] text-white flex items-center justify-center font-black text-lg shadow-md shrink-0">
-                              {initial}
+                            <div className={`w-12 h-12 rounded-2xl ${
+                              isTrialGroup
+                                ? 'bg-gradient-to-tr from-amber-500 via-orange-500 to-amber-600 text-white'
+                                : 'bg-gradient-to-tr from-[#4221b6] via-[#5d35e0] to-[#8c90f6] text-white'
+                            } flex items-center justify-center font-black text-lg shadow-md shrink-0`}>
+                              {isTrialGroup ? '🎁' : initial}
                             </div>
                             <div className="min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <h3 className="font-black text-base sm:text-lg text-[#1c0576] leading-tight truncate">
                                   {group.studentName}
                                 </h3>
-                                <span className="px-3 py-0.5 rounded-full text-xs font-black bg-[#e0d7ff] text-[#4221b6] border border-[#8c90f6]/40 flex items-center gap-1 shadow-sm">
-                                  <span>📦</span>
-                                  <span>
-                                    {isFourPack
-                                      ? (lang === 'ar' ? 'باقة 4 حصص فرد طلب' : 'Pack 4 Séances')
-                                      : `${group.sessions.length} ${lang === 'ar' ? 'حصص' : 'Séances'}`}
-                                  </span>
-                                </span>
+
+                                {isTrialGroup ? (
+                                  <>
+                                    <span className="px-3.5 py-1 rounded-full text-xs font-black bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm flex items-center gap-1.5 border border-amber-400 animate-pulse">
+                                      <span className="text-sm">🎁</span>
+                                      <span>{lang === 'ar' ? 'طلب حصة تجريبية مجانية 100%' : 'Séance d\'Essai 100% Gratuite'}</span>
+                                    </span>
+                                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-900 border border-emerald-300 flex items-center gap-1 shadow-2xs">
+                                      <span className="material-symbols-outlined text-xs text-emerald-700">money_off</span>
+                                      <span>{lang === 'ar' ? 'غير مدفوعة (مجانية)' : 'Non Payante (Gratuite)'}</span>
+                                    </span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="px-3 py-0.5 rounded-full text-xs font-black bg-[#e0d7ff] text-[#4221b6] border border-[#8c90f6]/40 flex items-center gap-1 shadow-sm">
+                                      <span>📦</span>
+                                      <span>
+                                        {isFourPack
+                                          ? (lang === 'ar' ? 'باقة 4 حصص مدفوعة' : 'Pack 4 Séances Payant')
+                                          : `${group.sessions.length} ${lang === 'ar' ? 'حصص مدفوعة' : 'Séances Payantes'}`}
+                                      </span>
+                                    </span>
+                                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-900 border border-blue-200 flex items-center gap-1 shadow-2xs">
+                                      <span className="material-symbols-outlined text-xs text-blue-700">payments</span>
+                                      <span>{lang === 'ar' ? 'حصة مدفوعة' : 'Séance Payante'}</span>
+                                    </span>
+                                  </>
+                                )}
+
                                 {isHighlighted && (
                                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1 animate-pulse">
                                     <span>🔔</span>
@@ -1481,12 +1557,24 @@ export default function AdminPage() {
                             </div>
                           </div>
 
-                          {/* Right Side: Teacher Assigned & Meet Completion Counter */}
+                          {/* Right Side: Teacher Assigned, Payment Status & Meet Completion Counter */}
                           <div className="flex items-center gap-2.5 flex-wrap">
                             <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold bg-emerald-50 text-emerald-900 border border-emerald-200 shadow-sm">
                               <span>👩‍🏫</span>
                               <span>{lang === 'ar' ? `المعلمة: ${group.teacherName}` : `Maîtresse : ${group.teacherName}`}</span>
                             </div>
+
+                            {isTrialGroup ? (
+                              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-amber-100 text-amber-950 border border-amber-300 shadow-sm">
+                                <span>🎁</span>
+                                <span>{lang === 'ar' ? 'مجانية (بدون دفع)' : 'Gratuite (0€ / 0 QAR)'}</span>
+                              </div>
+                            ) : (
+                              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-indigo-50 text-indigo-950 border border-indigo-200 shadow-sm">
+                                <span>💳</span>
+                                <span>{lang === 'ar' ? 'مدفوعة (تحويل)' : 'Payante (Virement)'}</span>
+                              </div>
+                            )}
 
                             <div
                               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black shadow-sm border ${
@@ -1506,6 +1594,7 @@ export default function AdminPage() {
                             </div>
                           </div>
                         </div>
+
 
                         {/* ── Frame Body: 4 Sessions Table ─────────────────── */}
                         <div className="overflow-x-auto">
@@ -1531,14 +1620,33 @@ export default function AdminPage() {
                                   >
                                     {/* Session Index Chip */}
                                     <td className="p-3.5 pl-5 font-extrabold text-xs text-on-surface">
-                                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black bg-[#e0d7ff]/70 text-[#4221b6] border border-[#8c90f6]/30">
-                                        <span className="material-symbols-outlined text-sm">school</span>
-                                        <span>
-                                          {lang === 'ar'
-                                            ? `الحصة ${sIdx + 1} من ${group.sessions.length}`
-                                            : `Séance ${sIdx + 1}/${group.sessions.length}`}
-                                        </span>
-                                      </span>
+                                      {isSessionTrial(session) ? (
+                                        <div className="flex flex-col gap-1 items-start">
+                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-black bg-gradient-to-r from-amber-100 to-amber-200 text-amber-950 border border-amber-300 shadow-2xs">
+                                            <span className="text-sm">🎁</span>
+                                            <span>{lang === 'ar' ? 'حصة تجريبية مجانية' : 'Séance d\'Essai Gratuite'}</span>
+                                          </span>
+                                          <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-md border border-emerald-300">
+                                            <span className="material-symbols-outlined text-[12px] text-emerald-700">money_off</span>
+                                            <span>{lang === 'ar' ? 'غير مدفوعة (مجانية 100%)' : 'Non payante (100% Gratuite)'}</span>
+                                          </span>
+                                        </div>
+                                      ) : (
+                                        <div className="flex flex-col gap-1 items-start">
+                                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black bg-[#e0d7ff]/70 text-[#4221b6] border border-[#8c90f6]/30">
+                                            <span className="material-symbols-outlined text-sm">school</span>
+                                            <span>
+                                              {lang === 'ar'
+                                                ? `الحصة ${sIdx + 1} من ${group.sessions.length}`
+                                                : `Séance ${sIdx + 1}/${group.sessions.length}`}
+                                            </span>
+                                          </span>
+                                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                                            <span className="material-symbols-outlined text-[12px] text-blue-600">payments</span>
+                                            <span>{lang === 'ar' ? 'حصة باقة مدفوعة' : 'Séance payante'}</span>
+                                          </span>
+                                        </div>
+                                      )}
                                     </td>
 
                                     {/* Date & Time */}

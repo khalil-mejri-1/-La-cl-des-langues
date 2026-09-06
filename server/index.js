@@ -698,6 +698,7 @@ app.post("/api/sessions", async (req, res) => {
       subject,
       paymentMethod,
       packId,
+      isTrial,
     } = req.body;
 
     if (!day || !time) {
@@ -706,6 +707,7 @@ app.post("/api/sessions", async (req, res) => {
 
     const assignedPackId = packId || `pack_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
     const effectivePhone = (studentPhone || phone || "").trim();
+    const isFreeTrial = isTrial !== undefined ? Boolean(isTrial) : (paymentMethod === 'free_trial' || /essai|تجريب/i.test(subject || ''));
 
     const newSession = new Session({
       studentName: studentName || childName || parentName || "Élève",
@@ -724,8 +726,9 @@ app.post("/api/sessions", async (req, res) => {
       subject: subject || "Français & Arabe (Séance d'essai)",
       status: "pending",
       meetUrl: "",
-      paymentMethod: paymentMethod || "card",
+      paymentMethod: isFreeTrial ? 'free_trial' : (paymentMethod || "card"),
       packId: assignedPackId,
+      isTrial: isFreeTrial,
     });
 
     await newSession.save();
@@ -792,6 +795,7 @@ app.post("/api/sessions/batch", async (req, res) => {
         meetUrl: "",
         paymentMethod: s.paymentMethod || "card",
         packId: s.packId || batchPackId,
+        isTrial: Boolean(s.isTrial || false),
       };
     });
 

@@ -84,6 +84,10 @@ const sessionSchema = new mongoose.Schema(
       default: '',
       trim: true,
     },
+    isTrial: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

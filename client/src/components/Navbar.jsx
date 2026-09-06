@@ -95,7 +95,21 @@ export default function Navbar() {
 
   // Load notifications from localStorage + DB + listen for new ones in real time
   const loadNotifications = useCallback(async (shouldPlaySound = false) => {
-    if (!user) {
+    // Determine effective user: either logged-in user, or guest with phone/session IDs stored
+    let guestPhone = '';
+    let guestSessionIds = [];
+    try {
+      guestPhone = localStorage.getItem('last_student_phone') || '';
+      guestSessionIds = JSON.parse(localStorage.getItem('my_booked_session_ids') || '[]');
+    } catch {}
+
+    const effectiveUser = user || (
+      (guestPhone || guestSessionIds.length > 0)
+        ? { phone: guestPhone, role: 'user', isGuest: true }
+        : null
+    );
+
+    if (!effectiveUser) {
       setNotifications([]);
       return;
     }
@@ -128,7 +142,7 @@ export default function Navbar() {
       }
 
       // 3. Convert all database sessions to live notifications for this user
-      const dbNotifs = syncSessionsToNotifications(allSessions, user);
+      const dbNotifs = syncSessionsToNotifications(allSessions, effectiveUser);
 
       // 4. Combine with stored broadcast notifications
       const combined = [...unified];
@@ -142,6 +156,8 @@ export default function Navbar() {
             type: 'MEET_LINK_ADDED',
             targetStudentId: so.studentId,
             targetStudentEmail: so.studentEmail,
+            targetStudentPhone: so.studentPhone || so.phone || '',
+            targetStudentName: so.studentName || '',
             targetTeacherName: so.teacherName,
             title: {
               fr: `🔗 Lien Google Meet ajouté !`,
@@ -157,6 +173,7 @@ export default function Navbar() {
             iconBg: 'bg-emerald-100 text-emerald-700',
             link: '/dashboard',
             timestamp: so.timestamp || new Date().toISOString(),
+            meta: { sessionId: so.sessionId || '', meetUrl: so.meetUrl || '', studentPhone: so.studentPhone || so.phone || '', studentName: so.studentName || '' },
           });
         }
       });
@@ -172,8 +189,8 @@ export default function Navbar() {
         }
       });
 
-      // Filter and sort for the logged in user, excluding deleted/cleared notifications
-      const userNotifs = filterNotificationsForUser(combined, user)
+      // Filter and sort for the logged in user (or guest), excluding deleted/cleared notifications
+      const userNotifs = filterNotificationsForUser(combined, effectiveUser)
         .filter(n => {
           if (deletedIds.includes(n.id)) return false;
           if (clearedTimestamp > 0) {

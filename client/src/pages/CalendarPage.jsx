@@ -303,24 +303,10 @@ export default function CalendarPage() {
     if (modalSessionIndex === null) return;
 
     if (modalSessionIndex === 'trial') {
-      const selectedDay = tempSelectedDate;
       setTempSelectedTime(timeSlot);
-      const cleanPhone = (studentPhone || '').trim();
-
-      // If phone is missing, prompt directly in the modal step 'phone'
-      if (!isPhoneValid(cleanPhone)) {
-        setModalStep('phone');
-        return;
-      }
-
-      setModalSessionIndex(null);
-      setTrialSession({ day: selectedDay, time: timeSlot, isBooked: true });
-      setPackSessions(prev => {
-        const updated = [...prev];
-        updated[0] = { ...updated[0], day: selectedDay, time: timeSlot };
-        return updated;
-      });
-      await handleConfirmTrialReservation(selectedDay, timeSlot, cleanPhone);
+      setPhoneError('');
+      // Always transition to the phone number input step as requested
+      setModalStep('phone');
       return;
     }
     
@@ -356,7 +342,6 @@ export default function CalendarPage() {
       return;
     }
     setPhoneError('');
-    setModalSessionIndex(null);
     setTrialSession({ day: dayToBook, time: timeToBook, isBooked: true });
     setPackSessions(prev => {
       const updated = [...prev];
@@ -364,6 +349,7 @@ export default function CalendarPage() {
       return updated;
     });
     await handleConfirmTrialReservation(dayToBook, timeToBook, cleanPhone);
+    setModalSessionIndex(null);
   };
 
   // Helper: check if a time slot is already taken on tempSelectedDate by another session
@@ -554,6 +540,18 @@ export default function CalendarPage() {
         localStorage.setItem('admin_sessions_cache', JSON.stringify([savedSession, ...existing]));
       } catch {}
 
+      // Store session ID so guest students can receive notifications by session ID
+      try {
+        const savedId = String(savedSession._id || savedSession.id || '');
+        if (savedId) {
+          const bookedIds = JSON.parse(localStorage.getItem('my_booked_session_ids') || '[]');
+          if (!bookedIds.includes(savedId)) {
+            bookedIds.unshift(savedId);
+            localStorage.setItem('my_booked_session_ids', JSON.stringify(bookedIds.slice(0, 20)));
+          }
+        }
+      } catch {}
+
       const studentDisplayName = user?.childName || user?.parentName || (user?.email ? user.email.split('@')[0] : 'Élève');
       const phoneSuffixFr = cleanPhone ? ` (Tél: ${cleanPhone})` : '';
       const phoneSuffixAr = cleanPhone ? ` (الهاتف: ${cleanPhone})` : '';
@@ -567,26 +565,28 @@ export default function CalendarPage() {
         targetTeacherName: teacherName,
         targetStudentId: String(user?.id || user?._id || ''),
         targetStudentEmail: user?.email || '',
+        targetStudentPhone: cleanPhone,
+        targetStudentName: studentDisplayName,
         title: {
-          fr: `🎁 Nouvelle séance d'essai gratuite demandée !`,
-          ar: `🎁 طلب حصة تجريبية مجانية جديد !`,
-          en: `🎁 New Free Trial Session Request!`,
+          fr: `🎁 Demande de Séance d'Essai GRATUITE (Non Payante)`,
+          ar: `🎁 طلب حصة تجريبية مجانية 100% (غير مدفوعة)`,
+          en: `🎁 Free Trial Session Request (100% Free - Non-Paid)`,
         },
         desc: {
-          fr: `L'élève ${studentDisplayName}${phoneSuffixFr} a réservé sa séance d'essai gratuite pour le ${getFormattedDayLabel(dayVal) || dayVal} à ${timeVal} avec ${teacherName}. 📱 Tél: ${cleanPhone}`,
-          ar: `قام التلميذ ${studentDisplayName}${phoneSuffixAr} بحجز حصته التجريبية المجانية ليوم ${getFormattedDayLabel(dayVal) || dayVal} الساعة ${timeVal} مع المعلمة ${teacherName}. 📱 الهاتف: ${cleanPhone}`,
-          en: `Student ${studentDisplayName}${phoneSuffixEn} booked a free trial session for ${dayVal} at ${timeVal} with ${teacherName}. 📱 Phone: ${cleanPhone}`,
+          fr: `L'élève ${studentDisplayName}${phoneSuffixFr} a réservé une séance d'essai 100% GRATUITE pour le ${getFormattedDayLabel(dayVal) || dayVal} à ${timeVal} avec ${teacherName} (aucun paiement requis). 📱 Tél: ${cleanPhone}`,
+          ar: `طلب التلميذ ${studentDisplayName}${phoneSuffixAr} حصة تجريبية مجانية 100% (بدون دفع) ليوم ${getFormattedDayLabel(dayVal) || dayVal} الساعة ${timeVal} مع المعلمة ${teacherName}. 📱 الهاتف: ${cleanPhone}`,
+          en: `Student ${studentDisplayName}${phoneSuffixEn} requested a 100% FREE trial session (no payment needed) for ${dayVal} at ${timeVal} with ${teacherName}. 📱 Phone: ${cleanPhone}`,
         },
         message: {
-          fr: `L'élève ${studentDisplayName}${phoneSuffixFr} a réservé sa séance d'essai gratuite pour le ${getFormattedDayLabel(dayVal) || dayVal} à ${timeVal} avec ${teacherName}. 📱 Tél: ${cleanPhone}`,
-          ar: `قام التلميذ ${studentDisplayName}${phoneSuffixAr} بحجز حصته التجريبية المجانية ليوم ${getFormattedDayLabel(dayVal) || dayVal} الساعة ${timeVal} مع المعلمة ${teacherName}. 📱 الهاتف: ${cleanPhone}`,
-          en: `Student ${studentDisplayName}${phoneSuffixEn} booked a free trial session for ${dayVal} at ${timeVal} with ${teacherName}. 📱 Phone: ${cleanPhone}`,
+          fr: `L'élève ${studentDisplayName}${phoneSuffixFr} a réservé une séance d'essai 100% GRATUITE pour le ${getFormattedDayLabel(dayVal) || dayVal} à ${timeVal} avec ${teacherName} (aucun paiement requis). 📱 Tél: ${cleanPhone}`,
+          ar: `طلب التلميذ ${studentDisplayName}${phoneSuffixAr} حصة تجريبية مجانية 100% (بدون دفع) ليوم ${getFormattedDayLabel(dayVal) || dayVal} الساعة ${timeVal} مع المعلمة ${teacherName}. 📱 الهاتف: ${cleanPhone}`,
+          en: `Student ${studentDisplayName}${phoneSuffixEn} requested a 100% FREE trial session (no payment needed) for ${dayVal} at ${timeVal} with ${teacherName}. 📱 Phone: ${cleanPhone}`,
         },
         icon: 'card_giftcard',
         iconBg: 'bg-emerald-100 text-emerald-700',
         link: '/admin',
         meta: {
-          sessionId: savedSession?.id || savedSession?._id,
+          sessionId: savedSession?._id || savedSession?.id,
           studentName: studentDisplayName,
           teacherName: teacherName,
           studentPhone: cleanPhone,
@@ -1067,7 +1067,7 @@ export default function CalendarPage() {
                 </span>
               </div>
               <p className="text-white/80 text-xs font-medium leading-relaxed">
-                {t.calendarPage?.packOffer?.priceDesc || (lang === 'ar' ? 'سعر باقة الـ 4 حصص : 80 ريال قطري (أو 19 يورو للحصة الواحدة)' : 'Le prix des 4 séances : 80 Riyals (soit 19€ la séance)')}
+                {t.calendarPage?.packOffer?.priceDesc || (lang === 'ar' ? 'سعر باقة الـ 4 حصص : 80 ريال قطري (أو 76 يورو للباقة كاملة)' : 'Le prix des 4 séances : 80 Riyals (soit 76€ pour le pack complet)')}
               </p>
             </div>
           </div>
@@ -1089,13 +1089,13 @@ export default function CalendarPage() {
 
             <div className="text-white/40 font-black text-xl hidden sm:block">/</div>
 
-            {/* EUR Price per session */}
+            {/* EUR Price for pack */}
             <div className="flex flex-col items-center bg-white/15 backdrop-blur-md rounded-2xl px-5 py-3 border border-white/25 shadow-lg min-w-[110px] text-center">
               <span className="text-[10px] font-bold text-white/70 uppercase tracking-wider mb-1">
-                {lang === 'ar' ? 'سعر الحصة' : 'Par séance'}
+                {lang === 'ar' ? 'سعر الباقة' : 'Pack 4 séances'}
               </span>
               <span className="text-2xl sm:text-3xl font-black text-yellow-300 leading-none" dir="ltr">
-                {t.calendarPage?.packOffer?.packPriceEur || '19€'}
+                {t.calendarPage?.packOffer?.packPriceEur || '76€'}
               </span>
               <span className="text-[10px] text-white/60 font-bold mt-1">
                 {lang === 'ar' ? 'بالتحويل البنكي' : 'par virement'}
